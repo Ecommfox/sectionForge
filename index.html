@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#1f352c" />
+    <title>Section Forge</title>
+  </head>
+  <body>
+    <main class="forge-shell">
+      <header class="topbar">
+        <a class="brand" href="#top" aria-label="Section Forge home">
+          <span class="brand-mark"><i></i><i></i><i></i></span>
+          <span>SECTION FORGE</span>
+        </a>
+        <div class="status-badge"><span></span>Ready to forge</div>
+        <button class="export-button" id="exportButton">Export section <b>↗</b></button>
+      </header>
+
+      <section class="hero" id="top">
+        <div class="eyebrow">BUILDER → SHOPIFY</div>
+        <h1>Turn a Builder section<br />into <em>storefront code.</em></h1>
+        <p>Paste a section from Builder, refine the output, and ship clean Liquid to your Shopify theme.</p>
+      </section>
+
+      <section class="workbench" aria-label="Section conversion workbench">
+        <div class="source-panel panel">
+          <div class="panel-heading">
+            <div><span class="panel-index">01</span><h2>Builder section</h2></div>
+            <button class="utility-button" id="clearButton">Clear</button>
+          </div>
+          <div class="section-label">SOURCE JSON</div>
+          <textarea id="sectionSource" aria-label="Builder section source">{
+  "@type": "hero",
+  "headline": "Better skin starts here.",
+  "eyebrow": "The everyday ritual",
+  "description": "A considered collection of gentle, high-performance skincare.",
+  "cta": { "label": "Shop the collection" },
+  "image": "hero-serum.jpg"
+}</textarea>
+          <div class="source-footer"><span><i class="source-dot"></i> Valid Builder JSON</span><span>284 bytes</span></div>
+        </div>
+
+        <div class="conversion-rail">
+          <div class="forge-seal"><span>✦</span></div>
+          <div class="rail-line"></div>
+          <button class="forge-button" id="forgeButton"><span>Forge section</span><b>→</b></button>
+          <p>Liquid + CSS<br />in one pass</p>
+        </div>
+
+        <div class="output-panel panel">
+          <div class="panel-heading">
+            <div><span class="panel-index">02</span><h2>Shopify output</h2></div>
+            <div class="output-state" id="outputState">Awaiting source</div>
+          </div>
+          <div class="code-tabs" role="tablist">
+            <button class="code-tab active" data-code="liquid">section.liquid</button>
+            <button class="code-tab" data-code="css">section.css</button>
+          </div>
+          <pre class="code-surface" id="codeOutput" aria-label="Generated Shopify code"><code><span class="code-note">{%- comment -%}</span>
+  Your forged section will appear here.
+<span class="code-note">{%- endcomment -%}</span></code></pre>
+          <div class="output-footer"><span id="outputHint">Ready when you are.</span><button class="copy-button" id="copyButton">Copy code</button></div>
+        </div>
+      </section>
+
+      <section class="preview-block">
+        <div class="preview-heading"><div><span class="panel-index">03</span><h2>Storefront preview</h2></div><span>DAWN THEME · DESKTOP</span></div>
+        <div class="storefront">
+          <div class="storefront-bar"><span>FREE SHIPPING ON ORDERS OVER $50</span><span>×</span></div>
+          <nav class="storefront-nav"><span class="nav-menu">MENU</span><strong>O R R I S</strong><span class="nav-cart">BAG (0)</span></nav>
+          <div class="storefront-hero">
+            <div class="preview-copy"><span>THE EVERYDAY RITUAL</span><h3>Better skin<br />starts here.</h3><p>A considered collection of gentle, high-performance skincare.</p><a href="#top">SHOP THE COLLECTION <b>→</b></a></div>
+            <div class="product-orb"><div class="bottle"><span>ORRIS</span><small>daily serum</small></div><div class="shadow"></div></div>
+          </div>
+        </div>
+      </section>
+
+      <footer><span>SECTION FORGE <b>©</b> 2024</span><span>Built for people who care about the details.</span></footer>
+    </main>
+    <div class="toast" id="toast" role="status"></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
