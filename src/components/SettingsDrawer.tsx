@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { X, Key, Shield, User, Store, Cpu, Check, AlertCircle, RefreshCw, LogOut } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
-import { TEST_PROFILES } from '../types/auth';
+import { TEST_PROFILES } from '../context/AuthContext';
 
 interface SettingsDrawerProps {
   isOpen: boolean;
