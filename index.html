@@ -3,82 +3,92 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#1f352c" />
-    <title>Section Forge</title>
+    <meta name="theme-color" content="#193427" />
+    <title>Section Forge - Forge storefront-ready code</title>
   </head>
   <body>
-    <main class="forge-shell">
-      <header class="topbar">
-        <a class="brand" href="#top" aria-label="Section Forge home">
-          <span class="brand-mark"><i></i><i></i><i></i></span>
-          <span>SECTION FORGE</span>
-        </a>
-        <div class="status-badge"><span></span>Ready to forge</div>
-        <button class="export-button" id="exportButton">Export section <b>↗</b></button>
+    <div class="app-container">
+      <!-- Top header bar -->
+      <header class="header-banner">
+        <div class="header-left">
+          <div class="eyebrow-tag">BUILDER SECTION CONVERTER</div>
+          <h1 class="main-title">Forge storefront-ready code.</h1>
+        </div>
+        <div class="header-right">
+          <button class="primary-action-btn" id="convertBtn">CONVERT SECTION</button>
+        </div>
       </header>
 
-      <section class="hero" id="top">
-        <div class="eyebrow">BUILDER → SHOPIFY</div>
-        <h1>Turn a Builder section<br />into <em>storefront code.</em></h1>
-        <p>Paste a section from Builder, refine the output, and ship clean Liquid to your Shopify theme.</p>
-      </section>
-
-      <section class="workbench" aria-label="Section conversion workbench">
-        <div class="source-panel panel">
-          <div class="panel-heading">
-            <div><span class="panel-index">01</span><h2>Builder section</h2></div>
-            <button class="utility-button" id="clearButton">Clear</button>
+      <!-- Main 3-column workbench grid -->
+      <main class="workbench-grid" aria-label="Section converter workbench">
+        <!-- Column 1: Source JSON -->
+        <section class="panel-column source-column">
+          <div class="column-header">
+            <span class="column-index">01 / SOURCE</span>
+            <span class="status-indicator">BUILDER SECTION READY</span>
           </div>
-          <div class="section-label">SOURCE JSON</div>
-          <textarea id="sectionSource" aria-label="Builder section source">{
-  "@type": "hero",
-  "headline": "Better skin starts here.",
-  "eyebrow": "The everyday ritual",
-  "description": "A considered collection of gentle, high-performance skincare.",
-  "cta": { "label": "Shop the collection" },
-  "image": "hero-serum.jpg"
+          <div class="source-editor-wrapper">
+            <textarea
+              id="sourceEditor"
+              class="code-textarea"
+              spellcheck="false"
+              aria-label="Builder section source JSON"
+            >{
+  "@type": "@builder.io/sdk:Element",
+  "component": {
+    "name": "Hero",
+    "options": {
+      "eyebrow": "Spring / Summer 2025",
+      "title": "Designed for the long way around.",
+      "ctaText": "Shop the collection",
+      "image": "https://images.unsplash.com/photo-1529139574466-a303027c1d8b"
+    }
+  }
 }</textarea>
-          <div class="source-footer"><span><i class="source-dot"></i> Valid Builder JSON</span><span>284 bytes</span></div>
-        </div>
-
-        <div class="conversion-rail">
-          <div class="forge-seal"><span>✦</span></div>
-          <div class="rail-line"></div>
-          <button class="forge-button" id="forgeButton"><span>Forge section</span><b>→</b></button>
-          <p>Liquid + CSS<br />in one pass</p>
-        </div>
-
-        <div class="output-panel panel">
-          <div class="panel-heading">
-            <div><span class="panel-index">02</span><h2>Shopify output</h2></div>
-            <div class="output-state" id="outputState">Awaiting source</div>
           </div>
-          <div class="code-tabs" role="tablist">
-            <button class="code-tab active" data-code="liquid">section.liquid</button>
-            <button class="code-tab" data-code="css">section.css</button>
-          </div>
-          <pre class="code-surface" id="codeOutput" aria-label="Generated Shopify code"><code><span class="code-note">{%- comment -%}</span>
-  Your forged section will appear here.
-<span class="code-note">{%- endcomment -%}</span></code></pre>
-          <div class="output-footer"><span id="outputHint">Ready when you are.</span><button class="copy-button" id="copyButton">Copy code</button></div>
-        </div>
-      </section>
+        </section>
 
-      <section class="preview-block">
-        <div class="preview-heading"><div><span class="panel-index">03</span><h2>Storefront preview</h2></div><span>DAWN THEME · DESKTOP</span></div>
-        <div class="storefront">
-          <div class="storefront-bar"><span>FREE SHIPPING ON ORDERS OVER $50</span><span>×</span></div>
-          <nav class="storefront-nav"><span class="nav-menu">MENU</span><strong>O R R I S</strong><span class="nav-cart">BAG (0)</span></nav>
-          <div class="storefront-hero">
-            <div class="preview-copy"><span>THE EVERYDAY RITUAL</span><h3>Better skin<br />starts here.</h3><p>A considered collection of gentle, high-performance skincare.</p><a href="#top">SHOP THE COLLECTION <b>→</b></a></div>
-            <div class="product-orb"><div class="bottle"><span>ORRIS</span><small>daily serum</small></div><div class="shadow"></div></div>
+        <!-- Column 2: Code output (Liquid / CSS) -->
+        <section class="panel-column code-column">
+          <div class="column-header code-header">
+            <div class="tab-group" role="tablist">
+              <button class="tab-btn active" data-tab="liquid" role="tab" aria-selected="true">LIQUID</button>
+              <button class="tab-btn" data-tab="css" role="tab" aria-selected="false">CSS</button>
+            </div>
+            <button class="copy-action-btn" id="copyCodeBtn">COPY CODE</button>
           </div>
-        </div>
-      </section>
+          <div class="code-viewport">
+            <pre class="code-content"><code id="codeDisplay"></code></pre>
+          </div>
+        </section>
 
-      <footer><span>SECTION FORGE <b>©</b> 2024</span><span>Built for people who care about the details.</span></footer>
-    </main>
-    <div class="toast" id="toast" role="status"></div>
+        <!-- Column 3: Render / Theme Preview -->
+        <section class="panel-column preview-column">
+          <div class="column-header">
+            <span class="column-index">03 / RENDER</span>
+            <span class="status-indicator">THEME PREVIEW</span>
+          </div>
+          <div class="preview-viewport">
+            <div class="rendered-storefront-card">
+              <div class="card-image-layer">
+                <img
+                  src="https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=1000&q=80"
+                  alt="Model wearing sunglasses with colorful flowers"
+                  class="card-bg-image"
+                />
+                <div class="card-overlay">
+                  <span class="card-eyebrow">SPRING / SUMMER 2025</span>
+                  <h2 class="card-heading">Designed for the long way around.</h2>
+                </div>
+              </div>
+              <div class="card-orange-accent"></div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div class="feedback-toast" id="toastMessage" role="status" aria-live="polite"></div>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>

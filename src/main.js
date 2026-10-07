@@ -1,55 +1,172 @@
 import './style.css';
 
-const source = document.querySelector('#sectionSource');
-const forge = document.querySelector('#forgeButton');
-const output = document.querySelector('#codeOutput code');
-const state = document.querySelector('#outputState');
-const hint = document.querySelector('#outputHint');
-const copy = document.querySelector('#copyButton');
-const clear = document.querySelector('#clearButton');
-const toast = document.querySelector('#toast');
-const tabs = document.querySelectorAll('.code-tab');
+const sourceEditor = document.getElementById('sourceEditor');
+const codeDisplay = document.getElementById('codeDisplay');
+const tabButtons = document.querySelectorAll('.tab-btn');
+const copyCodeBtn = document.getElementById('copyCodeBtn');
+const convertBtn = document.getElementById('convertBtn');
+const toastMessage = document.getElementById('toastMessage');
 
-const code = {
-  liquid: `<span class="code-note">{% comment %}</span> Forged by Section Forge <span class="code-note">{% endcomment %}</span>\n<section class="ritual-hero color-{{ section.settings.color_scheme }}">\n  <div class="ritual-hero__copy">\n    <p class="ritual-hero__eyebrow">{{ section.settings.eyebrow }}</p>\n    <h1>{{ section.settings.headline }}</h1>\n    <p>{{ section.settings.description }}</p>\n    <a href="{{ section.settings.button_link }}" class="button">\n      {{ section.settings.button_label }}\n    </a>\n  </div>\n\n  {{ section.settings.image | image_url: width: 1600 | image_tag }}\n</section>`,
-  css: `.ritual-hero {\n  display: grid;\n  grid-template-columns: repeat(2, minmax(0, 1fr));\n  min-height: 580px;\n  background: rgb(var(--color-background));\n}\n\n.ritual-hero__copy {\n  display: flex;\n  flex-direction: column;\n  justify-content: center;\n  padding: 10% 14%;\n}\n\n.ritual-hero__eyebrow {\n  margin: 0 0 1.5rem;\n  letter-spacing: .14em;\n  text-transform: uppercase;\n}`
-};
+// Preview card elements
+const cardEyebrow = document.querySelector('.card-eyebrow');
+const cardHeading = document.querySelector('.card-heading');
+const cardBgImage = document.querySelector('.card-bg-image');
 
-function notify(message) {
-  toast.textContent = message;
-  toast.classList.add('visible');
-  window.setTimeout(() => toast.classList.remove('visible'), 2100);
+let activeTab = 'liquid';
+
+const templates = {
+  liquid: `{% assign section_heading = section.settings.heading | default: 'Designed for the long way around.' %}
+
+<section class="trail-hero color-{{ section.settings.color_scheme }}">
+  <div class="trail-hero__content">
+    <p class="trail-hero__eyebrow">{{ section.settings.eyebrow }}</p>
+    <h1>{{ section_heading }}</h1>
+    {% if section.settings.button_label != blank %}
+      <a class="trail-hero__button" href="{{ section.settings.button_link }}">
+        {{ section.settings.button_label }}
+      </a>
+    {% endif %}
+  </div>
+
+  {% if section.settings.image != blank %}
+    {{ section.settings.image | image_url: width: 1800 | image_tag:
+      class: 'trail-hero__image',
+      loading: 'eager',
+      widths: '720, 1080, 1440, 1800'
+    }}
+  {% endif %}
+</section>`,
+
+  css: `.trail-hero {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  min-height: 520px;
+  background-color: var(--pine-darkest);
+  overflow: hidden;
 }
 
-function render(type) { output.innerHTML = code[type]; }
+.trail-hero__content {
+  position: relative;
+  z-index: 2;
+  padding: 3rem 2.5rem;
+  max-width: 640px;
+}
 
-forge.addEventListener('click', () => {
-  if (!source.value.trim()) { notify('Add a Builder section first.'); return; }
-  forge.querySelector('span').textContent = 'Forging…';
-  forge.disabled = true;
-  window.setTimeout(() => {
-    render('liquid');
-    state.textContent = '✓ Converted';
-    hint.textContent = 'Liquid and CSS ready to copy.';
-    forge.querySelector('span').textContent = 'Forged';
-    forge.disabled = false;
-    notify('Section forged successfully.');
-  }, 600);
+.trail-hero__eyebrow {
+  font-family: monospace;
+  font-size: 0.85rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #8ed0a5;
+  margin-bottom: 0.75rem;
+}
+
+.trail-hero h1 {
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  font-weight: 800;
+  line-height: 1.1;
+  color: #ffffff;
+  margin-bottom: 1.5rem;
+}
+
+.trail-hero__button {
+  display: inline-block;
+  padding: 0.85rem 1.6rem;
+  background-color: #ffffff;
+  color: #153123;
+  font-weight: 700;
+  text-decoration: none;
+  border-radius: 2px;
+}
+
+.trail-hero__image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 1;
+}`
+};
+
+function showToast(text) {
+  toastMessage.textContent = text;
+  toastMessage.classList.add('active');
+  window.clearTimeout(toastMessage._timer);
+  toastMessage._timer = window.setTimeout(() => {
+    toastMessage.classList.remove('active');
+  }, 2200);
+}
+
+function updateCodeView() {
+  codeDisplay.textContent = templates[activeTab];
+}
+
+function updatePreviewFromSource() {
+  try {
+    const parsed = JSON.parse(sourceEditor.value);
+    const options = parsed?.component?.options || parsed?.options || parsed;
+    
+    if (options.eyebrow && cardEyebrow) {
+      cardEyebrow.textContent = options.eyebrow.toUpperCase();
+    }
+    if ((options.title || options.heading) && cardHeading) {
+      cardHeading.textContent = options.title || options.heading;
+    }
+    if (options.image && cardBgImage) {
+      cardBgImage.src = options.image;
+    }
+  } catch (err) {
+    // If invalid JSON during typing, keep current preview
+  }
+}
+
+// Tab switcher
+tabButtons.forEach(btn => {
+  btn.addEventListener('click', () => {
+    tabButtons.forEach(b => {
+      b.classList.remove('active');
+      b.setAttribute('aria-selected', 'false');
+    });
+    btn.classList.add('active');
+    btn.setAttribute('aria-selected', 'true');
+    activeTab = btn.dataset.tab;
+    updateCodeView();
+  });
 });
 
-tabs.forEach(tab => tab.addEventListener('click', () => {
-  tabs.forEach(item => item.classList.remove('active'));
-  tab.classList.add('active');
-  render(tab.dataset.code);
-}));
-
-copy.addEventListener('click', async () => {
-  const active = document.querySelector('.code-tab.active').dataset.code;
-  await navigator.clipboard.writeText(code[active].replace(/<[^>]*>/g, ''));
-  copy.textContent = 'Copied!';
-  notify('Code copied to clipboard.');
-  window.setTimeout(() => { copy.textContent = 'Copy code'; }, 1700);
+// Copy code action
+copyCodeBtn.addEventListener('click', async () => {
+  const code = templates[activeTab];
+  try {
+    await navigator.clipboard.writeText(code);
+    copyCodeBtn.textContent = 'COPIED!';
+    showToast(`${activeTab.toUpperCase()} code copied to clipboard.`);
+    setTimeout(() => {
+      copyCodeBtn.textContent = 'COPY CODE';
+    }, 1800);
+  } catch (e) {
+    showToast('Failed to copy code.');
+  }
 });
 
-clear.addEventListener('click', () => { source.value = ''; source.focus(); state.textContent = 'Awaiting source'; hint.textContent = 'Ready when you are.'; });
-document.querySelector('#exportButton').addEventListener('click', () => notify('Forge your section before exporting.'));
+// Convert Section button action
+convertBtn.addEventListener('click', () => {
+  updatePreviewFromSource();
+  convertBtn.textContent = 'CONVERTING...';
+  convertBtn.disabled = true;
+  setTimeout(() => {
+    convertBtn.textContent = 'CONVERT SECTION';
+    convertBtn.disabled = false;
+    updateCodeView();
+    showToast('Section converted to Shopify Liquid & CSS.');
+  }, 450);
+});
+
+// Real-time source update
+sourceEditor.addEventListener('input', updatePreviewFromSource);
+
+// Initial render
+updateCodeView();
+updatePreviewFromSource();
