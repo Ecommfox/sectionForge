@@ -1100,6 +1100,10 @@ body {
   box-shadow: 0 0 0 3px rgba(60, 152, 100, 0.12);
 }
 
+.status-dot.offline {
+  background: #a8ada9;
+}
+
 .space-label {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1200,6 +1204,22 @@ body {
   font-weight: 500;
   letter-spacing: 0;
   text-transform: none;
+}
+
+.section-micro-header > button.section-micro-sub {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.section-micro-header > button.section-micro-sub:disabled {
+  cursor: wait;
+  opacity: 0.65;
 }
 
 .model-pill-group {
