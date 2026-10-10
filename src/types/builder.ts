@@ -56,5 +56,5 @@ export interface BuilderModelSummary {
   id: string;
   name: string;
   kind: 'section' | 'page' | 'data';
-  entryCount: number;
+  entryCount?: number;
 }

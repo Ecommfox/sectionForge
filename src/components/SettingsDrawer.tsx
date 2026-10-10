@@ -3,6 +3,7 @@ import { X, Key, Shield, User, Store, Cpu, Check, AlertCircle, RefreshCw, LogOut
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
 import { TEST_PROFILES } from '../context/AuthContext';
+import type { ShopifyDevelopmentTheme } from '../api/types';
 
 interface SettingsDrawerProps {
   isOpen: boolean;
@@ -29,7 +30,11 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ isOpen, onClose,
   const [isTestingBuilder, setIsTestingBuilder] = useState(false);
   const [builderTestResult, setBuilderTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [isTestingShopify, setIsTestingShopify] = useState(false);
-  const [shopifyTestResult, setShopifyTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [shopifyTestResult, setShopifyTestResult] = useState<{
+    success: boolean;
+    message: string;
+    developmentThemes?: ShopifyDevelopmentTheme[];
+  } | null>(null);
   const [customName, setCustomName] = useState('');
   const [customEmail, setCustomEmail] = useState('');
   const [showCustomForm, setShowCustomForm] = useState(false);
@@ -434,7 +439,10 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ isOpen, onClose,
                   type="text"
                   className="field-text-input font-mono"
                   value={settings.shopify.storeDomain}
-                  onChange={e => updateShopifyConfig({ storeDomain: e.target.value })}
+                  onChange={e => {
+                    setShopifyTestResult(null);
+                    updateShopifyConfig({ storeDomain: e.target.value });
+                  }}
                   placeholder="your-dev-store.myshopify.com"
                 />
               </div>
@@ -445,10 +453,16 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ isOpen, onClose,
                   type="password"
                   className="field-text-input font-mono"
                   value={settings.shopify.adminAccessToken}
-                  onChange={e => updateShopifyConfig({ adminAccessToken: e.target.value })}
+                  onChange={e => {
+                    setShopifyTestResult(null);
+                    updateShopifyConfig({ adminAccessToken: e.target.value });
+                  }}
                   placeholder="shpat_..."
                 />
-                <span className="field-help-text">Requires write_themes and read_themes scope.</span>
+                <span className="field-help-text">
+                  Used in memory for the connection test; it is not saved in browser storage. Theme validation requires
+                  read_themes access.
+                </span>
               </div>
 
               <div className="settings-field-group">
@@ -457,9 +471,33 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ isOpen, onClose,
                   type="text"
                   className="field-text-input font-mono"
                   value={settings.shopify.themeId}
-                  onChange={e => updateShopifyConfig({ themeId: e.target.value })}
+                  onChange={e => {
+                    setShopifyTestResult(null);
+                    updateShopifyConfig({ themeId: e.target.value });
+                  }}
                   placeholder="140924080312"
                 />
+                {!!shopifyTestResult?.developmentThemes?.length && (
+                  <select
+                    className="field-text-input font-mono"
+                    value={settings.shopify.themeId}
+                    onChange={e => {
+                      setShopifyTestResult(null);
+                      updateShopifyConfig({ themeId: e.target.value });
+                    }}
+                    aria-label="Select a verified Shopify development theme"
+                  >
+                    <option value="">Select a verified development theme</option>
+                    {shopifyTestResult.developmentThemes.map(theme => (
+                      <option key={theme.id} value={theme.id}>
+                        {theme.name} ({theme.id})
+                      </option>
+                    ))}
+                  </select>
+                )}
+                <span className="field-help-text">
+                  The test retrieves the store’s themes and only accepts themes with the development role.
+                </span>
               </div>
 
               <div className="connection-test-box">
