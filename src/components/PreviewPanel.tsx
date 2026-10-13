@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Monitor, Tablet, Smartphone, ExternalLink, RefreshCw, UploadCloud, CheckCircle, Sliders, ShieldCheck } from 'lucide-react';
 import { renderLiquidTemplate } from '../simulator/liquidSimulator';
 import { useSettings } from '../context/SettingsContext';
@@ -89,6 +89,125 @@ export const PreviewPanel: React.FC<PreviewPanelProps> = ({
     if (viewport === 'tablet') return '768px';
     return '100%';
   };
+
+  const simulatorDoc = useMemo(() => {
+    return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      html, body { margin: 0; }
+    </style>
+    <style>${cssCode}</style>
+  </head>
+  <body>${renderedHtml}</body>
+</html>`;
+  }, [cssCode, renderedHtml]);
+
+  const builderOriginalDoc = useMemo(() => {
+    const headerImage =
+      liveSettings.header_image ||
+      'https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=1000&q=80';
+    const overlayTitle = liveSettings.header_title || 'Designed for the long way around.';
+    const eyebrowText = liveSettings.eyebrow_text || 'SPRING / SUMMER 2025';
+    const titleSize =
+      liveSettings.title_size ? `${Math.min(36, Number(liveSettings.title_size))}px` : '26px';
+
+    return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      html, body { margin: 0; }
+      body {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        background: #e8e6dd;
+        font-family: Arial, sans-serif;
+      }
+      .rendered-storefront-card {
+        position: relative;
+        width: min(100%, 380px);
+        aspect-ratio: 0.78 / 1;
+        border-radius: 4px;
+        overflow: hidden;
+        box-shadow: 0 16px 36px rgba(18, 38, 28, 0.18);
+        background: #fff;
+      }
+      .card-image-layer {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+      }
+      .card-bg-image {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: center 25%;
+        display: block;
+      }
+      .card-overlay {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        padding: 24px 20px;
+        background: linear-gradient(
+          to top,
+          rgba(14, 33, 24, 0.94) 0%,
+          rgba(14, 33, 24, 0.72) 36%,
+          rgba(14, 33, 24, 0.2) 65%,
+          rgba(14, 33, 24, 0) 100%
+        );
+      }
+      .card-eyebrow {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 9.5px;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        color: #8ed0a5;
+        text-transform: uppercase;
+        margin-bottom: 8px;
+      }
+      .card-heading {
+        font-size: ${titleSize};
+        font-weight: 800;
+        line-height: 1.12;
+        margin: 0;
+        color: white;
+      }
+      .card-orange-accent {
+        position: absolute;
+        inset: auto 0 0 0;
+        height: 4px;
+        background: #d67a4d;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="rendered-storefront-card">
+      <div class="card-image-layer">
+        <img
+          src="${headerImage}"
+          alt="Model wearing sunglasses with colorful flowers"
+          class="card-bg-image"
+        />
+        <div class="card-overlay">
+          <span class="card-eyebrow">${eyebrowText}</span>
+          <h2 class="card-heading">${overlayTitle}</h2>
+        </div>
+      </div>
+      <div class="card-orange-accent"></div>
+    </div>
+  </body>
+</html>`;
+  }, [liveSettings]);
 
   return (
     <section className="panel-column preview-column" aria-label="Storefront preview">
@@ -202,11 +321,12 @@ export const PreviewPanel: React.FC<PreviewPanelProps> = ({
               className={`simulator-device-frame ${viewport}`}
               style={{ width: getViewportWidth(), maxWidth: '100%' }}
             >
-              {/* Inject scoped stylesheet */}
-              <style>{cssCode}</style>
-              <div
-                className="simulator-inner-content"
-                dangerouslySetInnerHTML={{ __html: renderedHtml }}
+              <iframe
+                title="Liquid simulator preview"
+                sandbox="allow-scripts"
+                referrerPolicy="no-referrer"
+                srcDoc={simulatorDoc}
+                className="simulator-iframe"
               />
             </div>
           </div>
@@ -218,33 +338,14 @@ export const PreviewPanel: React.FC<PreviewPanelProps> = ({
               <ShieldCheck size={14} />
               <span>Builder Original Layout (Fidelity Benchmark)</span>
             </div>
-            <div className="rendered-storefront-card">
-              <div className="card-image-layer">
-                <img
-                  src={
-                    liveSettings.header_image ||
-                    'https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=1000&q=80'
-                  }
-                  alt="Model wearing sunglasses with colorful flowers"
-                  className="card-bg-image"
-                />
-                <div className="card-overlay">
-                  <span className="card-eyebrow">
-                    {liveSettings.eyebrow_text || 'SPRING / SUMMER 2025'}
-                  </span>
-                  <h2
-                    className="card-heading"
-                    style={{
-                      fontSize: liveSettings.title_size
-                        ? `${Math.min(36, Number(liveSettings.title_size))}px`
-                        : undefined
-                    }}
-                  >
-                    {liveSettings.header_title || 'Designed for the long way around.'}
-                  </h2>
-                </div>
-              </div>
-              <div className="card-orange-accent"></div>
+            <div className="builder-original-frame">
+              <iframe
+                title="Builder original preview"
+                sandbox="allow-scripts"
+                referrerPolicy="no-referrer"
+                srcDoc={builderOriginalDoc}
+                className="builder-original-iframe"
+              />
             </div>
           </div>
         )}
