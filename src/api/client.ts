@@ -17,9 +17,13 @@ export class ApiClientError extends Error {
   }
 }
 
-export async function postJson<T>(path: string, body: unknown): Promise<T> {
+export async function postJson<T>(
+  path: string,
+  body: unknown,
+  headers?: Record<string, string>
+): Promise<T> {
   try {
-    const response = await apiClient.post<T>(path, body);
+    const response = await apiClient.post<T>(path, body, { headers });
     return response.data;
   } catch (error) {
     if (!axios.isAxiosError(error)) throw error;

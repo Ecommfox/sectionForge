@@ -4,32 +4,41 @@ import { fetchJson } from './http';
 
 interface BuilderModelRecord {
   id?: string;
-  _id?: string;
-  name?: string;
-  kind?: string;
-  entryCount?: number;
 }
 
-export async function listBuilderModels(apiKey: string): Promise<BuilderModelSummary[]> {
-  const url = new URL('https://builder.io/api/v1/models');
-  url.searchParams.set('apiKey', apiKey);
+interface BuilderModelsGraphQLResponse {
+  data?: {
+    models?: BuilderModelRecord[];
+  };
+  errors?: Array<{ message?: string }>;
+}
 
-  const records = await fetchJson<BuilderModelRecord[]>(url.toString());
+export async function listBuilderModels(privateKey: string): Promise<BuilderModelSummary[]> {
+  const url = new URL('https://cdn.builder.io/api/v2/admin');
+
+  const response = await fetchJson<BuilderModelsGraphQLResponse>(url.toString(), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    privateKey,
+    data: { query: 'query Models { models { id } }' }
+  });
+  if (response?.errors?.length) {
+    throw new AppError('Builder.io Admin API returned a GraphQL error.', 'BUILDER_UPSTREAM_ERROR', 502);
+  }
+  const records = response?.data?.models;
   if (!Array.isArray(records)) {
     throw new AppError('Builder.io returned an invalid models response.', 'INVALID_UPSTREAM_RESPONSE', 502);
   }
-    
-  console.log(records)
 
   return records.flatMap(record => {
-    const id = record.id || record._id;
-    if (!id || !record.name) return [];
-    const kind = record.kind === 'page' || record.kind === 'data' ? record.kind : 'section';
+    const id = record.id;
+    if (!id) return [];
     return [{
       id,
-      name: record.name,
-      kind,
-      ...(typeof record.entryCount === 'number' ? { entryCount: record.entryCount } : {})
+      name: id,
+      kind: 'section' as const
     }];
   });
 }
@@ -40,8 +49,6 @@ export async function listBuilderEntries(apiKey: string, modelName: string): Pro
   url.searchParams.set('limit', '100');
 
   const response = await fetchJson<{ results?: unknown[] }>(url.toString());
-
-   console.log(response)
 
   if (!response || !Array.isArray(response.results)) {
     throw new AppError('Builder.io returned an invalid entries response.', 'INVALID_UPSTREAM_RESPONSE', 502);

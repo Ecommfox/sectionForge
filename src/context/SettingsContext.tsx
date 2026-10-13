@@ -120,7 +120,9 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
 
   const updateBuilderConfig = (config: Partial<BuilderSpaceConfig>) => {
     setSettings(prev => {
-      const keyChanged = config.publicKey !== undefined && config.publicKey !== prev.builder.publicKey;
+      const keyChanged =
+        (config.publicKey !== undefined && config.publicKey !== prev.builder.publicKey) ||
+        (config.privateKey !== undefined && config.privateKey !== prev.builder.privateKey);
       return {
         ...prev,
         builder: {
@@ -170,12 +172,12 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
   };
 
   const testBuilderConnection = async (): Promise<{ success: boolean; message: string }> => {
-    if (!settings.builder.publicKey) {
+    if (!settings.builder.privateKey?.trim()) {
       updateBuilderConfig({ connected: false, lastTested: undefined });
-      return { success: false, message: 'Please provide a Builder.io Public API Key' };
+      return { success: false, message: 'Please provide a Builder.io Private API Key' };
     }
     try {
-      const result = await testConnection(settings.builder.publicKey);
+      const result = await testConnection(settings.builder.privateKey);
       updateBuilderConfig({
         connected: true,
         lastTested: result.message

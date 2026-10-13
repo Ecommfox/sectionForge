@@ -1,18 +1,40 @@
 import type { BuilderEntry, BuilderModelSummary } from '../types/builder';
 import { adaptBuilderEntry } from '../adapters/builderEntry';
-import { postJson } from './client';
+import { ApiClientError, postJson } from './client';
 import type {
   BuilderEntriesResponse,
   BuilderModelsResponse,
   BuilderTestConnectionResponse
 } from './types';
 
-export function testConnection(apiKey: string): Promise<BuilderTestConnectionResponse> {
-  return postJson('/api/builder/test-connection', { apiKey });
+export async function testConnection(privateKey: string): Promise<BuilderTestConnectionResponse> {
+  const response = await postJson<BuilderModelsResponse>(
+    '/api/builder/models',
+    {},
+    { Authorization: `Bearer ${privateKey}` }
+  );
+  if (!Array.isArray(response?.models)) {
+    throw new ApiClientError(
+      'Builder.io returned an invalid models response.',
+      'INVALID_UPSTREAM_RESPONSE',
+      502
+    );
+  }
+
+  const modelCount = response.models.length;
+  return {
+    success: true,
+    message: `Connected to Builder.io. ${modelCount} model${modelCount === 1 ? '' : 's'} found.`,
+    modelCount
+  };
 }
 
-export async function listModels(apiKey: string): Promise<BuilderModelSummary[]> {
-  const response = await postJson<BuilderModelsResponse>('/api/builder/models', { apiKey });
+export async function listModels(privateKey: string): Promise<BuilderModelSummary[]> {
+  const response = await postJson<BuilderModelsResponse>(
+    '/api/builder/models',
+    {},
+    { Authorization: `Bearer ${privateKey}` }
+  );
   return response.models;
 }
 

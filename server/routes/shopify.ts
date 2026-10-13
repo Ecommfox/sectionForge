@@ -1,7 +1,10 @@
-import { AppError } from '../lib/errors';
-import { readJsonObject } from '../middleware/validate';
+import { Router } from 'express';
 import type { ShopifyTestConnectionResponse } from '../../src/api/types';
+import { AppError } from '../lib/errors';
 import { verifyShopifyConnection } from '../lib/shopifyClient';
+import { readJsonObject } from '../middleware/validate';
+
+export const shopifyRouter = Router();
 
 function requireString(value: unknown, field: string): string {
   if (typeof value !== 'string' || value.trim().length === 0) {
@@ -10,16 +13,8 @@ function requireString(value: unknown, field: string): string {
   return value;
 }
 
-export async function handleShopifyRequest(request: Request, pathname: string): Promise<Response> {
-  if (request.method !== 'POST') {
-    throw new AppError('Method not allowed.', 'METHOD_NOT_ALLOWED', 405);
-  }
-
-  if (pathname !== '/api/shopify/test-connection') {
-    throw new AppError('Shopify integration is not implemented yet.', 'NOT_IMPLEMENTED', 501);
-  }
-
-  const body = await readJsonObject(request);
+shopifyRouter.post('/test-connection', async (request, response) => {
+  const body = readJsonObject(request);
   const storeDomain = requireString(body.storeDomain, 'Shopify store domain');
   const accessToken = requireString(body.adminAccessToken, 'Shopify Admin API access token');
   const themeId = body.themeId === undefined ? undefined : requireString(body.themeId, 'Shopify theme ID');
@@ -28,10 +23,19 @@ export async function handleShopifyRequest(request: Request, pathname: string): 
   const selectedSuffix = result.selectedTheme
     ? ` Verified development theme "${result.selectedTheme.name}" (${result.selectedTheme.id}).`
     : ` Found ${result.developmentThemes.length} development themes; select one to validate its ID.`;
-  const response: ShopifyTestConnectionResponse = {
+  const bodyResponse: ShopifyTestConnectionResponse = {
     success: true,
     message: `Connected to Shopify store ${result.storeDomain}.${selectedSuffix}`,
     developmentThemes: result.developmentThemes
   };
-  return Response.json(response);
-}
+  response.json(bodyResponse);
+});
+
+shopifyRouter.all(['/test-connection', '/themes', '/preview'], (request, response, next) => {
+  if (request.path === '/test-connection' || request.method !== 'POST') {
+    response.setHeader('Allow', 'POST');
+    next(new AppError('Method not allowed.', 'METHOD_NOT_ALLOWED', 405));
+    return;
+  }
+  next(new AppError('Shopify integration is not implemented yet.', 'NOT_IMPLEMENTED', 501));
+});

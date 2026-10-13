@@ -1,16 +1,15 @@
-import type { ApiMiddleware } from './types';
+import type { RequestHandler } from 'express';
 
-export const requestLogger: ApiMiddleware = async (request, context, next) => {
-  const response = await next(request, context);
-  const pathname = new URL(request.url).pathname;
-
-  console.info(JSON.stringify({
-    requestId: context.requestId,
-    method: request.method,
-    path: pathname,
-    status: response.status,
-    durationMs: Date.now() - context.startedAt
-  }));
-
-  return response;
+export const requestLogger: RequestHandler = (request, response, next) => {
+  const startedAt = Date.now();
+  response.on('finish', () => {
+    console.info(JSON.stringify({
+      requestId: response.getHeader('X-Request-Id'),
+      method: request.method,
+      path: request.path,
+      status: response.statusCode,
+      durationMs: Date.now() - startedAt
+    }));
+  });
+  next();
 };

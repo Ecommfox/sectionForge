@@ -79,19 +79,21 @@ export const App: React.FC = () => {
   };
 
   const handleRefreshModels = async () => {
-    if (!settings.builder.publicKey.trim()) {
-      showToast('Add your Builder.io Public API Key in settings first.');
+    if (!settings.builder.privateKey?.trim()) {
+      showToast('Add your Builder.io Private API Key in settings first.');
       return;
     }
 
     setIsLoadingModels(true);
     try {
-      const result = await listModels(settings.builder.publicKey);
+      const result = await listModels(settings.builder.privateKey);
       setModels(result);
       if (result.length === 0) {
         showToast('Connected, but no Builder.io models were found.');
       } else {
+        const preferredModel = result.find(model => model.name === settings.builder.defaultModel) ?? result[0];
         showToast(`Loaded ${result.length} Builder.io models.`);
+        await handleSelectModel(preferredModel.name);
       }
     } catch (error) {
       showToast(error instanceof Error ? error.message : 'Could not load Builder.io models.');
@@ -116,6 +118,10 @@ export const App: React.FC = () => {
       setIsLoadingEntries(false);
     }
   };
+
+  useEffect(() => {
+    void handleRefreshModels();
+  }, []);
 
   const handleConvert = () => {
     setIsConverting(true);
