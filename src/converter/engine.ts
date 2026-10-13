@@ -2,7 +2,7 @@ import { BuilderEntry, BuilderBlockNode } from '../types/builder';
 import { ConversionOutput, ConversionReportItem, ShopifySectionSchema } from '../types/liquid';
 import { sanitizeBuilderEntry } from './sanitize';
 import { mapSectionDataToSchema } from './schemaMapper';
-import { generateResponsiveCss, ScopedRule } from './stylesProcessor';
+import { camelToKebab, generateResponsiveCss, ScopedRule } from './stylesProcessor';
 import { AppSettings } from '../types/settings';
 
 /**
@@ -84,161 +84,18 @@ export function convertBuilderSection(
   );
   report.push(...schemaReports);
 
-  // 5. Build Scoped CSS rules
-  const cssRules: ScopedRule[] = [
-    {
-      selector: `.${baseClass}`,
-      large: {
-        position: 'relative',
-        display: 'flex',
-        'min-height': '620px',
-        'background-color': '#0e2118',
-        overflow: 'hidden',
-        'align-items': 'flex-end',
-        padding: '60px 48px'
-      },
-      medium: {
-        'min-height': '520px',
-        padding: '40px 28px'
-      },
-      small: {
-        'min-height': '440px',
-        padding: '30px 20px'
-      }
-    },
-    {
-      selector: `.${baseClass}__bg-img`,
-      large: {
-        position: 'absolute',
-        top: '0',
-        left: '0',
-        width: '100%',
-        height: '100%',
-        'object-fit': 'cover',
-        'z-index': '1'
-      }
-    },
-    {
-      selector: `.${baseClass}__overlay`,
-      large: {
-        position: 'absolute',
-        inset: '0',
-        background: 'linear-gradient(to top, rgba(14, 33, 24, 0.94) 0%, rgba(14, 33, 24, 0.65) 45%, rgba(14, 33, 24, 0.15) 80%, rgba(14, 33, 24, 0) 100%)',
-        'z-index': '1'
-      }
-    },
-    {
-      selector: `.${baseClass}__content`,
-      large: {
-        position: 'relative',
-        'z-index': '2',
-        'max-width': '680px',
-        display: 'flex',
-        'flex-direction': 'column',
-        gap: '16px'
-      },
-      small: {
-        'max-width': '100%'
-      }
-    },
-    {
-      selector: `.${baseClass}__eyebrow`,
-      large: {
-        'font-family': 'monospace',
-        'font-size': '11px',
-        'letter-spacing': '0.14em',
-        'text-transform': 'uppercase',
-        'font-weight': '600',
-        color: 'var(--sf-accent-color, #8ed0a5)'
-      }
-    },
-    {
-      selector: `.${baseClass}__title`,
-      large: {
-        'font-family': '"Inter Tight", sans-serif',
-        color: '#ffffff',
-        'font-weight': '800',
-        'line-height': '1.08',
-        'letter-spacing': '-0.03em',
-        'font-size': 'var(--sf-title-size, 52px)'
-      },
-      small: {
-        'font-size': '32px'
-      }
-    },
-    {
-      selector: `.${baseClass}__subheading`,
-      large: {
-        color: 'rgba(255, 255, 255, 0.85)',
-        'font-size': '16px',
-        'line-height': '1.5',
-        'max-width': '580px'
-      }
-    },
-    {
-      selector: `.${baseClass}__button`,
-      large: {
-        display: 'inline-flex',
-        'align-items': 'center',
-        padding: '14px 28px',
-        'background-color': '#ffffff',
-        color: '#153123',
-        'font-weight': '700',
-        'text-decoration': 'none',
-        'border-radius': '2px',
-        'font-size': '13px',
-        'letter-spacing': '0.04em',
-        width: 'fit-content',
-        transition: 'transform 0.15s ease, background-color 0.15s ease'
-      }
-    }
-  ];
-
-  const generatedCss = generateResponsiveCss(
-    cssRules,
-    settings.conversion.responsiveBreakpoints
-  );
-
-  // 6. Build High-Fidelity Liquid markup
+  // 5. Convert the sanitized Builder block tree into Liquid and scoped CSS.
+  const cssRules: ScopedRule[] = [];
+  const liquidBody = renderBuilderBlocks(sanitized.data.blocks, baseClass, cssRules, report);
+  const generatedCss = generateResponsiveCss(cssRules, settings.conversion.responsiveBreakpoints);
   const liquidMarkup = `{% comment %}
   Section: ${sanitized.name}
   Generated via SectionForge (Builder.io -> Shopify Liquid Converter)
 {% endcomment %}
 
-<div 
-  class="${baseClass}"
-  style="--sf-accent-color: {{ section.settings.accent_color | default: '#8ed0a5' }}; --sf-title-size: {{ section.settings.title_size | default: 52 }}px;"
->
-  {% if section.settings.header_image != blank %}
-    {{ section.settings.header_image | image_url: width: 1800 | image_tag: 
-      class: '${baseClass}__bg-img', 
-      loading: 'eager', 
-      widths: '720, 1080, 1440, 1800',
-      alt: section.settings.header_title | escape 
-    }}
-    <div class="${baseClass}__overlay"></div>
-  {% endif %}
-
-  <div class="${baseClass}__content" style="text-align: {{ section.settings.content_alignment | default: 'left' }};">
-    {% if section.settings.eyebrow_text != blank %}
-      <p class="${baseClass}__eyebrow">{{ section.settings.eyebrow_text }}</p>
-    {% endif %}
-
-    {% if section.settings.header_title != blank %}
-      <h1 class="${baseClass}__title">{{ section.settings.header_title }}</h1>
-    {% endif %}
-
-    {% if section.settings.subheading != blank %}
-      <p class="${baseClass}__subheading">{{ section.settings.subheading }}</p>
-    {% endif %}
-
-    {% if section.settings.button_label != blank %}
-      <a class="${baseClass}__button" href="{{ section.settings.button_url | default: '#' }}">
-        {{ section.settings.button_label }}
-      </a>
-    {% endif %}
-  </div>
-</div>`;
+<section class="${baseClass}">
+${liquidBody || '  <!-- No convertible Builder blocks found. -->'}
+</section>`;
 
   // 7. Format complete section file with {% stylesheet %} and {% schema %}
   const schemaFormatted = JSON.stringify(schema, null, 2);
@@ -275,4 +132,125 @@ function countBlocks(blocks?: BuilderBlockNode[]): number {
     count += countBlocks(b.children);
   }
   return count;
+}
+
+function renderBuilderBlocks(
+  blocks: BuilderBlockNode[] | undefined,
+  baseClass: string,
+  cssRules: ScopedRule[],
+  report: ConversionReportItem[],
+  parentPath: number[] = []
+): string {
+  if (!blocks?.length) return '';
+
+  return blocks.map((block, index) => {
+    const path = [...parentPath, index];
+    const className = `${baseClass}__node-${path.join('-')}`;
+    const selector = `.${className}`;
+    const responsiveStyles = block.responsiveStyles;
+
+    if (responsiveStyles) {
+      cssRules.push({
+        selector,
+        large: responsiveStyles.large || {},
+        medium: responsiveStyles.medium,
+        small: responsiveStyles.small
+      });
+    }
+
+    const inlineStyles = Object.entries(block.bindings || {})
+      .filter(([binding]) => binding.startsWith('style.'))
+      .flatMap(([binding, expression]) => {
+        const settingId = extractBindingKey(expression);
+        if (!settingId) return [];
+        const property = camelToKebab(binding.slice('style.'.length));
+        return [`${property}: {{ section.settings.${settingId} | escape }};`];
+      });
+    const styleAttribute = inlineStyles.length
+      ? ` style="${inlineStyles.join(' ')}"`
+      : '';
+
+    const children = renderBuilderBlocks(block.children, baseClass, cssRules, report, path);
+    const componentName = block.component?.name || '';
+    const options = block.component?.options || {};
+    const normalizedName = componentName.trim().toLowerCase();
+    const textBinding = getComponentBinding(block, 'text');
+    const text = renderValue(textBinding, options.text, true);
+    let markup: string;
+
+    if (normalizedName === 'custom code') {
+      markup = wrapComponent(className, String(options.code || ''), children, styleAttribute);
+    } else if (normalizedName === 'heading') {
+      const requestedLevel = Number(options.level) || 2;
+      const tag = `h${Math.min(6, Math.max(1, requestedLevel))}`;
+      markup = `<${tag} class="${className}"${styleAttribute}>${text}${children}</${tag}>`;
+    } else if (normalizedName === 'text') {
+      markup = wrapComponent(className, text, children, styleAttribute);
+    } else if (normalizedName === 'button') {
+      const href = renderValue(getComponentBinding(block, 'link'), options.link || '#', true);
+      markup = `<a class="${className}" href="${href}"${styleAttribute}>${text}${children}</a>`;
+    } else if (normalizedName === 'image') {
+      const imageSource = renderValue(
+        getComponentBinding(block, 'image') || getComponentBinding(block, 'src'),
+        options.image || options.src || '',
+        true
+      );
+      const alt = escapeHtml(String(options.alt || ''));
+      markup = `<img class="${className}" src="${imageSource}" alt="${alt}"${styleAttribute} />${children}`;
+    } else if (normalizedName === 'card') {
+      const title = renderValue(getComponentBinding(block, 'title'), options.title || '', true);
+      const description = renderValue(getComponentBinding(block, 'desc'), options.desc || '', true);
+      markup = `<article class="${className}"${styleAttribute}><h3>${title}</h3><p>${description}</p>${children}</article>`;
+    } else {
+      if (componentName && !['box', 'container', 'column', 'columns', 'section', 'fragment', 'div'].includes(normalizedName)) {
+        report.push({
+          id: `unsupported-${path.join('-')}`,
+          severity: 'unsupported',
+          blockName: componentName,
+          title: `Component not specifically mapped: "${componentName}"`,
+          details: 'The Builder component was retained as a generic container; its component-specific behavior may need manual conversion.',
+          suggestedAction: 'Replace this output with theme-compatible markup for the Builder component.'
+        });
+      }
+      const content = options.text !== undefined
+        ? text
+        : options.title !== undefined
+          ? renderValue(getComponentBinding(block, 'title'), options.title, true)
+          : '';
+      markup = wrapComponent(className, content, children, styleAttribute);
+    }
+
+    const showSetting = block.show ? extractBindingKey(block.show) : null;
+    return showSetting
+      ? `{% if section.settings.${showSetting} != blank %}\n${markup}\n{% endif %}`
+      : markup;
+  }).join('\n');
+}
+
+function getComponentBinding(block: BuilderBlockNode, option: string): string | undefined {
+  return Object.entries(block.bindings || {}).find(
+    ([binding]) => binding === `component.options.${option}`
+  )?.[1];
+}
+
+function renderValue(binding: string | undefined, fallback: unknown, escape: boolean): string {
+  const settingId = extractBindingKey(binding);
+  if (settingId) {
+    return `{{ section.settings.${settingId}${escape ? ' | escape' : ''} }}`;
+  }
+  const value = fallback == null ? '' : String(fallback);
+  return escape && !/<[a-z][\s\S]*>/i.test(value) ? escapeHtml(value) : value;
+}
+
+function wrapComponent(className: string, content: string, children: string, styleAttribute: string): string {
+  return `<div class="${className}"${styleAttribute}>${content}${children}</div>`;
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
