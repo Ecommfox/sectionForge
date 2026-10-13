@@ -1,22 +1,29 @@
-import { handleApiRoute } from './routes';
+import express from 'express';
+import { apiRouter } from './routes';
 import { errorHandler } from './middleware/errorHandler';
 import { requestLogger } from './middleware/logger';
 import { requestContext } from './middleware/requestContext';
-import type { ApiHandler, ApiMiddleware, RequestContext } from './middleware/types';
 
-const middleware: ApiMiddleware[] = [requestContext, requestLogger, errorHandler];
+export function createApp(staticDirectory?: string) {
+  const app = express();
 
-const apiHandler: ApiHandler = (request: Request, _context: RequestContext) => handleApiRoute(request);
+  app.use(
+    '/api',
+    requestContext,
+    requestLogger,
+    express.json({ limit: '64kb' }),
+    apiRouter
+  );
 
-const pipeline = middleware.reduceRight<ApiHandler>(
-  (next, current) => (request, context) => current(request, context, next),
-  apiHandler
-);
+  if (staticDirectory) {
+    app.use(express.static(staticDirectory));
+    app.get(/^\/(?!api(?:\/|$)).*/, (_request, response, next) => {
+      response.sendFile('index.html', { root: staticDirectory }, next);
+    });
+  }
 
-export async function handleRequest(request: Request): Promise<Response> {
-  const context: RequestContext = {
-    requestId: crypto.randomUUID(),
-    startedAt: Date.now()
-  };
-  return pipeline(request, context);
+  app.use(errorHandler);
+  return app;
 }
+
+export default createApp();

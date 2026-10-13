@@ -4,8 +4,8 @@ This roadmap is based on the current repository state. “In place” means code
 
 ## Current state
 
-- A server request handler and error response exist in `server/index.ts`; Builder handlers and upstream helpers are in `server/routes/builder.ts` and `server/lib/`.
-- `functions/api/[[route]].ts` adapts the handler for a Pages Function. Vite wires the Builder API into local development in `vite.config.js`.
+- An Express application and API routers are defined in `server/index.ts` and `server/routes/`; `npm start` serves the production build and API from Node.
+- Vite mounts the same Express application for local API requests in `vite.config.js`.
 - Builder client calls and entry adaptation are in `src/api/builder.ts`, `src/api/client.ts`, and `src/adapters/builderEntry.ts`.
 - The Shopify preview endpoint in `vite.config.js` is a mock. `src/context/SettingsContext.tsx` also reports a successful Shopify connection using a timer rather than a remote check. `src/components/PreviewPanel.tsx` falls back to a simulated preview URL.
 - `src/context/SettingsContext.tsx` writes the full settings object to `localStorage`; it includes fields for Builder private, Shopify Admin, and Anthropic API credentials. Do not put real private credentials into these fields until credential handling is changed.
@@ -22,24 +22,24 @@ This roadmap is based on the current repository state. “In place” means code
 
 ## Phase 1 — Server layer: `middleware/` + `routes/` skeleton (keystone)
 
-**Status:** Implementation is in place; a Cloudflare Pages runtime deployment has not yet been exercised. Shared middleware and the route registry now cover Builder and placeholder Shopify paths. Vite forwards API requests to the same handler used by the Pages Function.
+**Status:** The API now runs on Node/Express. Shared middleware and Express routers cover Builder and placeholder Shopify paths. Vite mounts the same Express application for local development.
 
 ### Tasks
 
 - [x] Define the server API boundary and keep route modules under `server/routes/`; keep request-wide concerns in a new `server/middleware/` area rather than coupling them to Vite.
-- [x] Keep a single dispatch entry point in `server/index.ts` and route all deployment adapters, including `functions/api/[[route]].ts`, through it.
-- [x] Use Axios for UI-to-app endpoint calls and server-side upstream endpoint requests. Centralize shared Axios configuration (base URL where applicable, timeout, and error normalization) in the API client/service layer; keep endpoint-specific request/response types next to their route clients. The Cloudflare-compatible fetch adapter is configured but still needs a Pages runtime verification.
+- [x] Keep a single Express application in `server/index.ts` and mount route modules through Express routers.
+- [x] Use Axios for UI-to-app endpoint calls and server-side upstream endpoint requests. Centralize shared Axios configuration (base URL where applicable, timeout, and error normalization) in the API client/service layer; keep endpoint-specific request/response types next to their route clients.
 - [x] Add only the shared middleware needed by the integrations: method/body validation, consistent JSON and error responses, no-store headers for credential-bearing responses, and bounded upstream request handling. Preserve the current structured `AppError` responses.
 - [x] Keep upstream destinations fixed to the intended services. Validate request fields and do not accept arbitrary upstream URLs or forward arbitrary caller headers.
 - [x] Add the Shopify route skeleton alongside the Builder routes, but do not treat a mock response or constructed URL as a successful live connection.
-- [x] Keep Vite’s local adapter thin: it should call the same handler as deployment instead of owning a second implementation of application behavior.
+- [x] Keep Vite’s local adapter thin: it mounts the same Express application used by the Node server.
 - [x] Confirm every API path has explicit method and unknown-path behavior, and that errors do not expose tokens, request bodies, or upstream response details.
 
 ### Acceptance / verification
 
-- [x] Builder and future Shopify routes pass through the same server handler in development and the Pages Function adapter.
+- [x] Builder and Shopify routes pass through the same Express routers in development and the Node server.
 - [x] Invalid JSON, invalid input, unsupported methods, upstream errors, and unknown API paths produce consistent structured errors.
-- [x] Run `npm run build`; manually check the relevant API paths in local development because the repository currently has no test script. Verify the Axios fetch adapter in a deployed/preview Cloudflare Pages runtime before treating platform validation as complete.
+- [x] Run `npm run build`; manually check the relevant API paths in local development because the repository currently has no test script.
 
 ## Phase 2 — Real Builder.io integration (closes finding #2)
 

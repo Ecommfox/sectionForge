@@ -297,7 +297,7 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ isOpen, onClose,
           {activeTab === 'builder' && (
             <div className="drawer-section">
               <div className="section-description">
-                Connect your Builder.io space to read section entries and schemas using the Content API.
+                Use the private key for model discovery through the Admin GraphQL API and the public key to read entries through the Content API.
               </div>
 
               <div className="settings-field-group">
@@ -328,8 +328,8 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ isOpen, onClose,
 
               <div className="settings-field-group">
                 <div className="field-label-row">
-                  <label className="field-label">Private Key (Optional)</label>
-                  <span className="field-badge muted">For Admin GraphQL</span>
+                  <label className="field-label">Private API Key</label>
+                  <span className="field-badge">Required for Models</span>
                 </div>
                 <input
                   type={showApiKey ? 'text' : 'password'}
