@@ -1,23 +1,24 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { AppSettings, BuilderSpaceConfig, ShopifyDevThemeConfig, ConversionConfig } from '../types/settings';
+import { testConnection } from '../api/builder';
+import { testConnection as testShopifyApiConnection } from '../api/shopify';
+import type { ShopifyDevelopmentTheme } from '../api/types';
 
 const SETTINGS_STORAGE_KEY = 'sectionforge_user_settings';
 
 const DEFAULT_SETTINGS: AppSettings = {
   builder: {
-    publicKey: 'bpk-demo-trailgear-89421',
+    publicKey: '',
     privateKey: '',
     spaceName: 'TrailGear Production Space',
     defaultModel: 'hero-section',
-    connected: true,
-    lastTested: 'Valid connection (Public API OK)'
+    connected: false
   },
   shopify: {
     storeDomain: 'trailgear-dev.myshopify.com',
-    adminAccessToken: 'shpat_demo_88294723910381023',
-    themeId: '140924080312',
-    enabled: true,
-    lastConnected: 'Ready (Theme: Dawn Dev v15.0)'
+    adminAccessToken: '',
+    themeId: '',
+    enabled: false
   },
   anthropicApiKey: '',
   conversion: {
@@ -40,40 +41,116 @@ interface SettingsContextType {
   setAnthropicApiKey: (key: string) => void;
   resetToDefaults: () => void;
   testBuilderConnection: () => Promise<{ success: boolean; message: string }>;
-  testShopifyConnection: () => Promise<{ success: boolean; message: string }>;
+  testShopifyConnection: () => Promise<{
+    success: boolean;
+    message: string;
+    developmentThemes?: ShopifyDevelopmentTheme[];
+  }>;
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
 
-export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [settings, setSettings] = useState<AppSettings>(() => {
-    try {
-      const stored = localStorage.getItem(SETTINGS_STORAGE_KEY) || sessionStorage.getItem(SETTINGS_STORAGE_KEY);
-      if (stored) {
-        return { ...DEFAULT_SETTINGS, ...JSON.parse(stored) };
-      }
-    } catch (e) {}
+function getStoredSettings(): AppSettings {
+  let serialized: string | null = null;
+  try {
+    serialized = localStorage.getItem(SETTINGS_STORAGE_KEY) || sessionStorage.getItem(SETTINGS_STORAGE_KEY);
+  } catch {
     return DEFAULT_SETTINGS;
-  });
+  }
+
+  if (!serialized) return DEFAULT_SETTINGS;
+
+  try {
+    const stored: unknown = JSON.parse(serialized);
+    if (!stored || typeof stored !== 'object' || Array.isArray(stored)) return DEFAULT_SETTINGS;
+
+    const values = stored as Partial<AppSettings>;
+    const settings: AppSettings = {
+      ...DEFAULT_SETTINGS,
+      ...values,
+      builder: {
+        ...DEFAULT_SETTINGS.builder,
+        ...(values.builder || {}),
+        privateKey: ''
+      },
+      shopify: {
+        ...DEFAULT_SETTINGS.shopify,
+        ...(values.shopify || {}),
+        adminAccessToken: ''
+      },
+      anthropicApiKey: ''
+    };
+
+    const sanitized = JSON.stringify(settings);
+    try {
+      localStorage.setItem(SETTINGS_STORAGE_KEY, sanitized);
+      sessionStorage.removeItem(SETTINGS_STORAGE_KEY);
+    } catch (error) {
+      console.warn('Could not remove legacy credentials from browser storage.', error);
+    }
+    return settings;
+  } catch {
+    try {
+      localStorage.removeItem(SETTINGS_STORAGE_KEY);
+      sessionStorage.removeItem(SETTINGS_STORAGE_KEY);
+    } catch (storageError) {
+      console.warn('Could not clear invalid stored settings.', storageError);
+    }
+    return DEFAULT_SETTINGS;
+  }
+}
+
+export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const [settings, setSettings] = useState<AppSettings>(getStoredSettings);
 
   useEffect(() => {
     try {
-      localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
-    } catch (e) {}
+      const safeSettings: AppSettings = {
+        ...settings,
+        builder: { ...settings.builder, privateKey: '' },
+        shopify: { ...settings.shopify, adminAccessToken: '' },
+        anthropicApiKey: ''
+      };
+      localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(safeSettings));
+      sessionStorage.removeItem(SETTINGS_STORAGE_KEY);
+    } catch (error) {
+      console.warn('Settings persistence failed.', error);
+    }
   }, [settings]);
 
   const updateBuilderConfig = (config: Partial<BuilderSpaceConfig>) => {
-    setSettings(prev => ({
-      ...prev,
-      builder: { ...prev.builder, ...config }
-    }));
+    setSettings(prev => {
+      const keyChanged =
+        (config.publicKey !== undefined && config.publicKey !== prev.builder.publicKey) ||
+        (config.privateKey !== undefined && config.privateKey !== prev.builder.privateKey);
+      return {
+        ...prev,
+        builder: {
+          ...prev.builder,
+          ...config,
+          ...(keyChanged ? { connected: false, lastTested: undefined } : {})
+        }
+      };
+    });
   };
 
   const updateShopifyConfig = (config: Partial<ShopifyDevThemeConfig>) => {
-    setSettings(prev => ({
-      ...prev,
-      shopify: { ...prev.shopify, ...config }
-    }));
+    setSettings(prev => {
+      const storeChanged = config.storeDomain !== undefined && config.storeDomain !== prev.shopify.storeDomain;
+      const connectionInputChanged =
+        storeChanged ||
+        (config.adminAccessToken !== undefined && config.adminAccessToken !== prev.shopify.adminAccessToken) ||
+        (config.themeId !== undefined && config.themeId !== prev.shopify.themeId);
+      return {
+        ...prev,
+        shopify: {
+          ...prev.shopify,
+          ...config,
+          ...(storeChanged ? { themeId: '' } : {}),
+          ...(connectionInputChanged ? { lastConnected: undefined } : {})
+        }
+      };
+    });
   };
 
   const updateConversionConfig = (config: Partial<ConversionConfig>) => {
@@ -95,32 +172,57 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
   };
 
   const testBuilderConnection = async (): Promise<{ success: boolean; message: string }> => {
-    if (!settings.builder.publicKey) {
-      return { success: false, message: 'Please provide a Builder.io Public API Key' };
+    if (!settings.builder.privateKey?.trim()) {
+      updateBuilderConfig({ connected: false, lastTested: undefined });
+      return { success: false, message: 'Please provide a Builder.io Private API Key' };
     }
-    // Simulate lightweight test call to Builder Content API
-    return new Promise(resolve => {
-      setTimeout(() => {
-        resolve({
-          success: true,
-          message: `Connected to space "${settings.builder.spaceName || 'Builder Space'}" (Status 200 OK)`
-        });
-      }, 500);
-    });
+    try {
+      const result = await testConnection(settings.builder.privateKey);
+      updateBuilderConfig({
+        connected: true,
+        lastTested: result.message
+      });
+      return { success: true, message: result.message };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Builder.io connection failed.';
+      updateBuilderConfig({ connected: false, lastTested: message });
+      return { success: false, message };
+    }
   };
 
-  const testShopifyConnection = async (): Promise<{ success: boolean; message: string }> => {
-    if (!settings.shopify.storeDomain) {
-      return { success: false, message: 'Shopify Store domain is required' };
+  const testShopifyConnection = async (): Promise<{
+    success: boolean;
+    message: string;
+    developmentThemes?: ShopifyDevelopmentTheme[];
+  }> => {
+    if (!settings.shopify.storeDomain.trim()) {
+      return { success: false, message: 'Shopify Store domain is required.' };
     }
-    return new Promise(resolve => {
-      setTimeout(() => {
-        resolve({
-          success: true,
-          message: `Dev theme connection verified for ${settings.shopify.storeDomain} (Theme ID ${settings.shopify.themeId || 'Active'})`
-        });
-      }, 600);
-    });
+    if (!settings.shopify.adminAccessToken.trim()) {
+      return { success: false, message: 'Enter a Shopify Admin API access token.' };
+    }
+
+    try {
+      const result = await testShopifyApiConnection(
+        settings.shopify.storeDomain,
+        settings.shopify.adminAccessToken,
+        settings.shopify.themeId.trim() || undefined
+      );
+      const selectedTheme = result.developmentThemes.find(theme => theme.id === settings.shopify.themeId) ||
+        (result.developmentThemes.length === 1 ? result.developmentThemes[0] : undefined);
+      const message = selectedTheme
+        ? `Connected to ${settings.shopify.storeDomain}; verified development theme "${selectedTheme.name}" (${selectedTheme.id}).`
+        : `Connected to ${settings.shopify.storeDomain}; found ${result.developmentThemes.length} development themes. Select one below.`;
+      updateShopifyConfig({
+        ...(selectedTheme ? { themeId: selectedTheme.id } : {}),
+        lastConnected: message
+      });
+      return { success: true, message, developmentThemes: result.developmentThemes };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Shopify connection failed.';
+      updateShopifyConfig({ lastConnected: undefined });
+      return { success: false, message };
+    }
   };
 
   return (

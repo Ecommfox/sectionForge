@@ -8,10 +8,15 @@ import { GOLDEN_HERO_ENTRY, ALL_SAMPLE_ENTRIES } from './fixtures/sampleHero';
 import { BuilderEntry } from './types/builder';
 import { convertBuilderSection } from './converter/engine';
 import { useSettings } from './context/SettingsContext';
+import { listEntries, listModels } from './api/builder';
+import { BuilderModelSummary } from './types/builder';
 
 export const App: React.FC = () => {
   const { settings } = useSettings();
   const [entries, setEntries] = useState<BuilderEntry[]>(ALL_SAMPLE_ENTRIES);
+  const [models, setModels] = useState<BuilderModelSummary[]>([]);
+  const [isLoadingModels, setIsLoadingModels] = useState(false);
+  const [isLoadingEntries, setIsLoadingEntries] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<BuilderEntry>(GOLDEN_HERO_ENTRY);
   const [rawJson, setRawJson] = useState<string>(() => JSON.stringify(GOLDEN_HERO_ENTRY, null, 2));
 
@@ -72,6 +77,51 @@ export const App: React.FC = () => {
       // Allow user to finish typing
     }
   };
+
+  const handleRefreshModels = async () => {
+    if (!settings.builder.privateKey?.trim()) {
+      showToast('Add your Builder.io Private API Key in settings first.');
+      return;
+    }
+
+    setIsLoadingModels(true);
+    try {
+      const result = await listModels(settings.builder.privateKey);
+      setModels(result);
+      if (result.length === 0) {
+        showToast('Connected, but no Builder.io models were found.');
+      } else {
+        const preferredModel = result.find(model => model.name === settings.builder.defaultModel) ?? result[0];
+        showToast(`Loaded ${result.length} Builder.io models.`);
+        await handleSelectModel(preferredModel.name);
+      }
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Could not load Builder.io models.');
+    } finally {
+      setIsLoadingModels(false);
+    }
+  };
+
+  const handleSelectModel = async (modelName: string) => {
+    setIsLoadingEntries(true);
+    try {
+      const result = await listEntries(settings.builder.publicKey, modelName);
+      setEntries(result);
+      if (result.length > 0) {
+        handleSelectEntry(result[0]);
+      } else {
+        showToast(`No entries found in "${modelName}".`);
+      }
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Could not load Builder.io entries.');
+    } finally {
+      setIsLoadingEntries(false);
+    }
+  };
+
+  useEffect(() => {
+    void handleRefreshModels();
+  }, []);
 
   const handleConvert = () => {
     setIsConverting(true);
@@ -136,6 +186,11 @@ export const App: React.FC = () => {
           rawJson={rawJson}
           onRawJsonChange={handleRawJsonChange}
           onOpenSettings={() => setIsSettingsOpen(true)}
+          models={models}
+          isLoadingModels={isLoadingModels}
+          isLoadingEntries={isLoadingEntries}
+          onRefreshModels={handleRefreshModels}
+          onSelectModel={handleSelectModel}
         />
 
         {/* Column 2: Live Simulator & Storefront Preview */}

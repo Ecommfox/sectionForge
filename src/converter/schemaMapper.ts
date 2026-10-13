@@ -119,4 +119,5 @@ function mapSettingType(builderType: string): string {
 
 function sanitizeSettingId(id: string): string {
   return id.replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase();
+  
 }

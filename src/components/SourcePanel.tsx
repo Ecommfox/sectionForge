@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Layers, FileJson, CheckCircle2, ChevronRight, ChevronDown, Sparkles, AlertTriangle, Key, ExternalLink } from 'lucide-react';
-import { BuilderEntry, BuilderBlockNode } from '../types/builder';
+import { Layers, FileJson, CheckCircle2, ChevronRight, ChevronDown, Sparkles, AlertTriangle, Key, ExternalLink, RefreshCw } from 'lucide-react';
+import { BuilderEntry, BuilderBlockNode, BuilderModelSummary } from '../types/builder';
 import { useSettings } from '../context/SettingsContext';
 
 interface SourcePanelProps {
@@ -10,6 +10,11 @@ interface SourcePanelProps {
   rawJson: string;
   onRawJsonChange: (json: string) => void;
   onOpenSettings: () => void;
+  models: BuilderModelSummary[];
+  isLoadingModels: boolean;
+  isLoadingEntries: boolean;
+  onRefreshModels: () => void;
+  onSelectModel: (modelName: string) => void;
 }
 
 export const SourcePanel: React.FC<SourcePanelProps> = ({
@@ -18,7 +23,12 @@ export const SourcePanel: React.FC<SourcePanelProps> = ({
   onSelectEntry,
   rawJson,
   onRawJsonChange,
-  onOpenSettings
+  onOpenSettings,
+  models,
+  isLoadingModels,
+  isLoadingEntries,
+  onRefreshModels,
+  onSelectModel
 }) => {
   const { settings } = useSettings();
   const [sourceMode, setSourceMode] = useState<'explorer' | 'json'>('explorer');
@@ -132,7 +142,7 @@ export const SourcePanel: React.FC<SourcePanelProps> = ({
         </div>
 
         <div className="source-space-indicator" onClick={onOpenSettings} title="Click to edit Builder space credentials">
-          <span className="status-dot online"></span>
+          <span className={`status-dot ${settings.builder.connected ? 'online' : 'offline'}`}></span>
           <span className="space-label">{settings.builder.spaceName || 'Sandbox Space'}</span>
         </div>
       </div>
@@ -144,7 +154,11 @@ export const SourcePanel: React.FC<SourcePanelProps> = ({
             <div className="space-meta-row">
               <div className="space-chip">
                 <Key size={11} />
-                <span>Public Key: {settings.builder.publicKey.substring(0, 12)}...</span>
+                <span>
+                  {settings.builder.publicKey
+                    ? `Public Key: ${settings.builder.publicKey.substring(0, 12)}...`
+                    : 'Builder.io not configured'}
+                </span>
               </div>
               <button type="button" className="edit-space-btn" onClick={onOpenSettings}>
                 Configure
@@ -156,18 +170,31 @@ export const SourcePanel: React.FC<SourcePanelProps> = ({
           <div className="source-section-block">
             <div className="section-micro-header">
               <span>SELECT MODEL</span>
-              <span className="section-micro-sub">Section Models</span>
+              <button
+                type="button"
+                className="section-micro-sub"
+                onClick={onRefreshModels}
+                disabled={isLoadingModels}
+              >
+                <RefreshCw size={11} className={isLoadingModels ? 'spin-anim' : ''} />
+                {isLoadingModels ? 'Loading' : 'Load from Builder'}
+              </button>
             </div>
             <div className="model-pill-group">
-              {['hero-section', 'announcement-bar', 'benefit-grid'].map(model => (
+              {(models.length ? models.map(model => model.name) : ['hero-section', 'announcement-bar', 'benefit-grid']).map(model => (
                 <button
                   key={model}
                   type="button"
                   className={`model-pill ${selectedModel === model ? 'active' : ''}`}
+                  disabled={isLoadingEntries}
                   onClick={() => {
                     setSelectedModel(model);
-                    const matching = entries.find(e => e.modelName === model);
-                    if (matching) onSelectEntry(matching);
+                    if (models.length) {
+                      onSelectModel(model);
+                    } else {
+                      const matching = entries.find(e => e.modelName === model);
+                      if (matching) onSelectEntry(matching);
+                    }
                   }}
                 >
                   {model}
@@ -182,6 +209,7 @@ export const SourcePanel: React.FC<SourcePanelProps> = ({
               <span>ENTRIES ({entries.length})</span>
               <span className="section-micro-sub">Pick to convert</span>
             </div>
+            {isLoadingEntries && <div className="section-micro-sub">Loading Builder.io entries...</div>}
             <div className="entry-cards-list">
               {entries.map(entry => {
                 const isSelected = selectedEntry.id === entry.id;
