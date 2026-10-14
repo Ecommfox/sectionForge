@@ -182,6 +182,8 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
         connected: true,
         lastTested: result.message
       });
+
+      console.log('Builder.io test connection result:', result);
       return { success: true, message: result.message };
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Builder.io connection failed.';

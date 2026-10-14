@@ -21,6 +21,8 @@ export async function testConnection(privateKey: string): Promise<BuilderTestCon
     );
   }
 
+  console.log('Builder.io models response:', response);
+
   const modelCount = response.models.length;
   return {
     success: true,
