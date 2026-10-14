@@ -2,6 +2,7 @@ import type { BuilderEntry, BuilderModelSummary } from '../types/builder';
 import { adaptBuilderEntry } from '../adapters/builderEntry';
 import { ApiClientError, postJson } from './client';
 import type {
+  BuilderEntryHtmlResponse,
   BuilderEntriesResponse,
   BuilderModelsResponse,
   BuilderTestConnectionResponse
@@ -45,5 +46,28 @@ export async function listEntries(apiKey: string, modelName: string): Promise<Bu
     apiKey,
     modelName
   });
+
+  console.log('All the entries:', response)
   return response.entries.map(entry => adaptBuilderEntry(entry, modelName));
+}
+
+export async function getEntryHtml(
+  apiKey: string,
+  modelName: string,
+  entryId: string
+): Promise<string> {
+  const response = await postJson<BuilderEntryHtmlResponse>('/api/builder/entry-html', {
+    apiKey,
+    modelName,
+    entryId
+  });
+  if (typeof response?.html !== 'string') {
+    throw new ApiClientError(
+      'Builder.io returned an invalid HTML response.',
+      'INVALID_UPSTREAM_RESPONSE',
+      502
+    );
+  }
+
+  return response.html;
 }

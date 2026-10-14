@@ -14,6 +14,10 @@ export interface BuilderEntriesResponse {
   entries: unknown[];
 }
 
+export interface BuilderEntryHtmlResponse {
+  html: string;
+}
+
 export interface ShopifyDevelopmentTheme {
   id: string;
   name: string;

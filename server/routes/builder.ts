@@ -2,12 +2,13 @@ import { Router } from 'express';
 import type { Request } from 'express';
 import type { BuilderModelSummary } from '../../src/types/builder';
 import type {
+  BuilderEntryHtmlResponse,
   BuilderEntriesResponse,
   BuilderModelsResponse,
   BuilderTestConnectionResponse
 } from '../../src/api/types';
 import { AppError } from '../lib/errors';
-import { listBuilderEntries, listBuilderModels } from '../lib/builderClient';
+import { getBuilderEntryHtml, listBuilderEntries, listBuilderModels } from '../lib/builderClient';
 import { readJsonObject } from '../middleware/validate';
 
 export const builderRouter = Router();
@@ -32,6 +33,13 @@ function requirePrivateKey(request: Request): string {
 function requireModelName(value: unknown): string {
   if (typeof value !== 'string' || value.trim().length === 0 || value.length > 128) {
     throw new AppError('A valid Builder.io model name is required.', 'INVALID_MODEL_NAME', 400);
+  }
+  return value.trim();
+}
+
+function requireEntryId(value: unknown): string {
+  if (typeof value !== 'string' || value.trim().length === 0 || value.length > 256) {
+    throw new AppError('A valid Builder.io entry ID is required.', 'INVALID_ENTRY_ID', 400);
   }
   return value.trim();
 }
@@ -76,7 +84,21 @@ builderRouter.post('/entries', async (request, response) => {
   response.json(result);
 });
 
-builderRouter.all(['/models', '/test-connection', '/entries'], (_request, response, next) => {
+builderRouter.post('/entry-html', async (request, response) => {
+  const body = readJsonObject(request);
+  const apiKey = requireCredential(
+    body.apiKey,
+    'A valid Builder.io public API key is required.',
+    'INVALID_API_KEY'
+  );
+  const modelName = requireModelName(body.modelName);
+  const entryId = requireEntryId(body.entryId);
+  const html = await getBuilderEntryHtml(apiKey, modelName, entryId);
+  const result: BuilderEntryHtmlResponse = { html };
+  response.json(result);
+});
+
+builderRouter.all(['/models', '/test-connection', '/entries', '/entry-html'], (_request, response, next) => {
   response.setHeader('Allow', 'POST');
   next(new AppError('Method not allowed.', 'METHOD_NOT_ALLOWED', 405));
 });

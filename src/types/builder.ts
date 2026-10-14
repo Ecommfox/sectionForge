@@ -39,6 +39,7 @@ export interface BuilderEntry {
   id: string;
   name: string;
   modelName: string;
+  origin?: 'builder';
   lastUpdated: string;
   published: 'published' | 'draft';
   data: {

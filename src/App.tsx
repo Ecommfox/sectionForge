@@ -195,6 +195,7 @@ export const App: React.FC = () => {
 
         {/* Column 2: Live Simulator & Storefront Preview */}
         <PreviewPanel
+          selectedEntry={selectedEntry}
           liquidCode={liquidCode}
           cssCode={cssCode}
           schemaSettings={activeSectionSettings}
