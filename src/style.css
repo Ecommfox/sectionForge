@@ -1487,11 +1487,12 @@ body {
 
 .builder-original-frame {
   display: flex;
-  width: min(100%, 420px);
+  width: 100%;
   min-height: 420px;
   height: 100%;
   background: #fff;
   box-shadow: 0 5px 22px rgba(18, 38, 28, 0.12);
+  overflow: hidden;
 }
 
 .fidelity-badge-row {

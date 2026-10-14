@@ -233,8 +233,8 @@ ${JSON.stringify(conversion.schema, null, 2)}
                   </div>
                 </div>
               ) : (
-                conversion.report.map(item => (
-                  <div key={item.id} className={`report-item-card ${item.severity}`}>
+                conversion.report.map((item, index) => (
+                  <div key={`${item.id}-${index}`} className={`report-item-card ${item.severity}`}>
                     <div className="report-item-header">
                       <div className="report-item-badge-wrap">
                         {item.severity === 'warning' ? (
