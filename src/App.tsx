@@ -103,9 +103,15 @@ export const App: React.FC = () => {
   };
 
   const handleSelectModel = async (modelName: string) => {
+    const apiKey = settings.builder.publicKey.trim();
+    if (!apiKey) {
+      showToast('A Builder.io public API key is required to load entries. Add it in settings first.');
+      return;
+    }
+
     setIsLoadingEntries(true);
     try {
-      const result = await listEntries(settings.builder.publicKey, modelName);
+      const result = await listEntries(apiKey, modelName);
       setEntries(result);
       if (result.length > 0) {
         handleSelectEntry(result[0]);
