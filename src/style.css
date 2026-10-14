@@ -1448,20 +1448,51 @@ body {
 }
 
 .simulator-device-frame {
+  display: flex;
   min-height: 100%;
+  height: 100%;
   background: #fff;
   box-shadow: 0 5px 22px rgba(18, 38, 28, 0.12);
   transition: width 0.2s ease;
+  overflow: hidden;
 }
 
-.simulator-inner-content {
-  min-height: 100%;
+.simulator-device-frame.desktop {
+  width: 100%;
+}
+
+.simulator-device-frame.tablet {
+  width: 768px;
+}
+
+.simulator-device-frame.mobile {
+  width: 375px;
+}
+
+.simulator-iframe,
+.builder-original-iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 420px;
+  border: 0;
+  background: #fff;
 }
 
 .builder-original-viewport {
   align-items: center;
   flex-direction: column;
   gap: 14px;
+}
+
+.builder-original-frame {
+  display: flex;
+  width: 100%;
+  min-height: 420px;
+  height: 100%;
+  background: #fff;
+  box-shadow: 0 5px 22px rgba(18, 38, 28, 0.12);
+  overflow: hidden;
 }
 
 .fidelity-badge-row {

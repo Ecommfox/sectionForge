@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Monitor, Tablet, Smartphone, ExternalLink, RefreshCw, UploadCloud, CheckCircle, Sliders, ShieldCheck } from 'lucide-react';
 import { renderLiquidTemplate } from '../simulator/liquidSimulator';
 import { useSettings } from '../context/SettingsContext';
@@ -89,6 +89,45 @@ export const PreviewPanel: React.FC<PreviewPanelProps> = ({
     if (viewport === 'tablet') return '768px';
     return '100%';
   };
+
+  const simulatorDoc = useMemo(() => {
+    return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      html, body { margin: 0; }
+    </style>
+    <style>${cssCode}</style>
+  </head>
+  <body>${renderedHtml}</body>
+</html>`;
+  }, [cssCode, renderedHtml]);
+
+  const builderOriginalDoc = useMemo(() => {
+    return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      html, body {
+        margin: 0;
+        min-height: 100%;
+        height: 100%;
+        background: #e8e6dd;
+      }
+      body {
+        display: flex;
+        align-items: stretch;
+        justify-content: stretch;
+      }
+    </style>
+  </head>
+  <body></body>
+</html>`;
+  }, []);
 
   return (
     <section className="panel-column preview-column" aria-label="Storefront preview">
@@ -202,11 +241,12 @@ export const PreviewPanel: React.FC<PreviewPanelProps> = ({
               className={`simulator-device-frame ${viewport}`}
               style={{ width: getViewportWidth(), maxWidth: '100%' }}
             >
-              {/* Inject scoped stylesheet */}
-              <style>{cssCode}</style>
-              <div
-                className="simulator-inner-content"
-                dangerouslySetInnerHTML={{ __html: renderedHtml }}
+              <iframe
+                title="Liquid simulator preview"
+                sandbox="allow-scripts"
+                referrerPolicy="no-referrer"
+                srcDoc={simulatorDoc}
+                className="simulator-iframe"
               />
             </div>
           </div>
@@ -218,33 +258,17 @@ export const PreviewPanel: React.FC<PreviewPanelProps> = ({
               <ShieldCheck size={14} />
               <span>Builder Original Layout (Fidelity Benchmark)</span>
             </div>
-            <div className="rendered-storefront-card">
-              <div className="card-image-layer">
-                <img
-                  src={
-                    liveSettings.header_image ||
-                    'https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=1000&q=80'
-                  }
-                  alt="Model wearing sunglasses with colorful flowers"
-                  className="card-bg-image"
-                />
-                <div className="card-overlay">
-                  <span className="card-eyebrow">
-                    {liveSettings.eyebrow_text || 'SPRING / SUMMER 2025'}
-                  </span>
-                  <h2
-                    className="card-heading"
-                    style={{
-                      fontSize: liveSettings.title_size
-                        ? `${Math.min(36, Number(liveSettings.title_size))}px`
-                        : undefined
-                    }}
-                  >
-                    {liveSettings.header_title || 'Designed for the long way around.'}
-                  </h2>
-                </div>
-              </div>
-              <div className="card-orange-accent"></div>
+            <div
+              className="builder-original-frame"
+              style={{ width: getViewportWidth(), maxWidth: '100%' }}
+            >
+              <iframe
+                title="Builder original preview"
+                sandbox="allow-scripts"
+                referrerPolicy="no-referrer"
+                srcDoc={builderOriginalDoc}
+                className="builder-original-iframe"
+              />
             </div>
           </div>
         )}
