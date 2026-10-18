@@ -1,9 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Monitor, Tablet, Smartphone, ExternalLink, RefreshCw, UploadCloud, CheckCircle, Sliders, ShieldCheck } from 'lucide-react';
+import { getEntryHtml } from '../api/builder';
 import { renderLiquidTemplate } from '../simulator/liquidSimulator';
+import type { BuilderEntry } from '../types/builder';
 import { useSettings } from '../context/SettingsContext';
 
 interface PreviewPanelProps {
+  selectedEntry: BuilderEntry;
   liquidCode: string;
   cssCode: string;
   schemaSettings: Record<string, any>;
@@ -13,16 +16,32 @@ interface PreviewPanelProps {
 type ViewportMode = 'desktop' | 'tablet' | 'mobile';
 type PreviewTab = 'simulator' | 'builder_original' | 'shopify_dev';
 
+interface BuilderOriginalHtml {
+  entryKey: string;
+  html: string;
+}
+
+interface BuilderOriginalError {
+  entryKey: string;
+  message: string;
+}
+
 export const PreviewPanel: React.FC<PreviewPanelProps> = ({
+  selectedEntry,
   liquidCode,
   cssCode,
   schemaSettings,
   onShowToast
 }) => {
   const { settings } = useSettings();
+  const selectedEntryKey = JSON.stringify([selectedEntry.modelName, selectedEntry.id]);
   const [viewport, setViewport] = useState<ViewportMode>('desktop');
   const [previewTab, setPreviewTab] = useState<PreviewTab>('simulator');
   const [renderedHtml, setRenderedHtml] = useState<string>('');
+  const [builderOriginalHtml, setBuilderOriginalHtml] = useState<BuilderOriginalHtml | null>(null);
+  const [builderOriginalError, setBuilderOriginalError] = useState<BuilderOriginalError | null>(null);
+  const [isLoadingBuilderOriginal, setIsLoadingBuilderOriginal] = useState(false);
+  const [builderOriginalRetryKey, setBuilderOriginalRetryKey] = useState(0);
   const [isRendering, setIsRendering] = useState(false);
   const [isPushingTheme, setIsPushingTheme] = useState(false);
   const [devThemeUrl, setDevThemeUrl] = useState<string | null>(null);
@@ -50,6 +69,66 @@ export const PreviewPanel: React.FC<PreviewPanelProps> = ({
       isCancelled = true;
     };
   }, [liquidCode, liveSettings]);
+
+  useEffect(() => {
+    let isCancelled = false;
+    setBuilderOriginalHtml(null);
+    setBuilderOriginalError(null);
+    setIsLoadingBuilderOriginal(false);
+
+    if (previewTab !== 'builder_original' || selectedEntry.origin !== 'builder') {
+      return () => {
+        isCancelled = true;
+      };
+    }
+
+    const apiKey = settings.builder.publicKey.trim();
+    if (!apiKey) {
+      setBuilderOriginalError({
+        entryKey: selectedEntryKey,
+        message: 'Add your Builder.io public API key in settings to load this preview.'
+      });
+      return () => {
+        isCancelled = true;
+      };
+    }
+
+    setIsLoadingBuilderOriginal(true);
+    void getEntryHtml(apiKey, selectedEntry.modelName, selectedEntry.id)
+      .then(html => {
+        if (isCancelled) return;
+        if (!html.trim()) {
+          setBuilderOriginalError({
+            entryKey: selectedEntryKey,
+            message: 'Builder.io returned an empty HTML preview.'
+          });
+          return;
+        }
+        setBuilderOriginalHtml({ entryKey: selectedEntryKey, html });
+      })
+      .catch(error => {
+        if (isCancelled) return;
+        setBuilderOriginalError({
+          entryKey: selectedEntryKey,
+          message: error instanceof Error ? error.message : 'Could not load the Builder.io HTML preview.'
+        });
+      })
+      .finally(() => {
+        if (!isCancelled) setIsLoadingBuilderOriginal(false);
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [
+    previewTab,
+    selectedEntry.id,
+    selectedEntryKey,
+    selectedEntry.modelName,
+    selectedEntry.origin,
+    settings.builder.publicKey,
+    builderOriginalRetryKey
+  ]);
 
   const handlePushToDevTheme = async () => {
     setIsPushingTheme(true);
@@ -125,9 +204,20 @@ export const PreviewPanel: React.FC<PreviewPanelProps> = ({
       }
     </style>
   </head>
-  <body></body>
+  <body>${builderOriginalHtml?.html ?? ''}</body>
 </html>`;
-  }, []);
+  }, [builderOriginalHtml]);
+
+  const hasCurrentBuilderHtml = builderOriginalHtml?.entryKey === selectedEntryKey;
+  const currentBuilderError = builderOriginalError?.entryKey === selectedEntryKey
+    ? builderOriginalError.message
+    : null;
+  const isCurrentBuilderLoading = isLoadingBuilderOriginal || (
+    previewTab === 'builder_original' &&
+    selectedEntry.origin === 'builder' &&
+    !hasCurrentBuilderHtml &&
+    !currentBuilderError
+  );
 
   return (
     <section className="panel-column preview-column" aria-label="Storefront preview">
@@ -262,13 +352,38 @@ export const PreviewPanel: React.FC<PreviewPanelProps> = ({
               className="builder-original-frame"
               style={{ width: getViewportWidth(), maxWidth: '100%' }}
             >
-              <iframe
-                title="Builder original preview"
-                sandbox="allow-scripts"
-                referrerPolicy="no-referrer"
-                srcDoc={builderOriginalDoc}
-                className="builder-original-iframe"
-              />
+              {selectedEntry.origin !== 'builder' ? (
+                <div className="builder-preview-state" role="status">
+                  Load an entry from Builder.io to see its original HTML preview.
+                </div>
+              ) : isCurrentBuilderLoading ? (
+                <div className="builder-preview-state" role="status">
+                  Loading Builder.io preview…
+                </div>
+              ) : currentBuilderError ? (
+                <div className="builder-preview-state" role="alert">
+                  <span>{currentBuilderError}</span>
+                  <button
+                    type="button"
+                    className="builder-preview-retry"
+                    onClick={() => setBuilderOriginalRetryKey(key => key + 1)}
+                  >
+                    Retry
+                  </button>
+                </div>
+              ) : hasCurrentBuilderHtml ? (
+                <iframe
+                  title="Builder original preview"
+                  sandbox="allow-scripts"
+                  referrerPolicy="no-referrer"
+                  srcDoc={builderOriginalDoc}
+                  className="builder-original-iframe"
+                />
+              ) : (
+                <div className="builder-preview-state" role="status">
+                  Open this tab to load the selected Builder.io entry.
+                </div>
+              )}
             </div>
           </div>
         )}

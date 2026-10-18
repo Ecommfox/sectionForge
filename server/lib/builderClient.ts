@@ -14,6 +14,12 @@ interface BuilderModelsGraphQLResponse {
   errors?: Array<{ message?: string }>;
 }
 
+interface BuilderHtmlResponse {
+  data?: {
+    html?: unknown;
+  };
+}
+
 export async function listBuilderModels(privateKey: string): Promise<BuilderModelSummary[]> {
   const url = new URL('https://cdn.builder.io/api/v2/admin');
 
@@ -67,4 +73,23 @@ export async function listBuilderEntries(apiKey: string, modelName: string): Pro
   }
 
   return response.results;
+}
+
+export async function getBuilderEntryHtml(
+  apiKey: string,
+  modelName: string,
+  entryId: string
+): Promise<string> {
+  const url = new URL(`https://cdn.builder.io/api/v3/html/${encodeURIComponent(modelName)}`);
+  url.searchParams.set('apiKey', apiKey);
+  url.searchParams.set('includeUnpublished', 'true');
+  url.searchParams.set('query.id', entryId);
+
+  const response = await fetchJson<BuilderHtmlResponse>(url.toString());
+  const html = response?.data?.html;
+  if (typeof html !== 'string') {
+    throw new AppError('Builder.io returned an invalid HTML response.', 'INVALID_UPSTREAM_RESPONSE', 502);
+  }
+
+  return html;
 }

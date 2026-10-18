@@ -28,6 +28,7 @@ export function adaptBuilderEntry(
     id,
     name: record.name || String(record.data.title || 'Untitled Builder entry'),
     modelName: record.modelName || record.model?.name || requestedModelName,
+    origin: 'builder',
     lastUpdated: record.lastUpdated || 'Unknown',
     published: record.published === false || record.published === 'draft' ? 'draft' : 'published',
     data: record.data

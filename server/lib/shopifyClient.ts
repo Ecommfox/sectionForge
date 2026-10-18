@@ -2,17 +2,22 @@ import axios from 'axios';
 import type { ShopifyDevelopmentTheme } from '../../src/api/types';
 import { AppError } from './errors';
 
-const SHOPIFY_API_VERSION = '2026-07';
+const SHOPIFY_API_VERSION = '2026-10';
 const REQUEST_TIMEOUT_MS = 8_000;
 
 interface ShopifyThemeRecord {
-  id?: number | string;
+  id?: string;
   name?: string;
   role?: string;
 }
 
 interface ShopifyThemesResponse {
-  themes?: ShopifyThemeRecord[];
+  data?: {
+    themes?: {
+      nodes?: ShopifyThemeRecord[];
+    };
+  };
+  errors?: Array<{ message?: string }>;
 }
 
 const shopifyClient = axios.create({
@@ -66,40 +71,64 @@ export async function verifyShopifyConnection(
   const storeDomain = normalizeShopDomain(input.storeDomain);
   const accessToken = normalizeAccessToken(input.accessToken);
   const requestedThemeId = normalizeThemeId(input.themeId);
-  const endpoint = `https://${storeDomain}/admin/api/${SHOPIFY_API_VERSION}/themes.json?fields=id,name,role`;
+  const endpoint = `https://${storeDomain}/admin/api/${SHOPIFY_API_VERSION}/graphql.json`;
 
   let payload: ShopifyThemesResponse;
   try {
-    const response = await shopifyClient.get<ShopifyThemesResponse>(endpoint, {
-      headers: { 'X-Shopify-Access-Token': accessToken }
+    const response = await shopifyClient.post<ShopifyThemesResponse>(endpoint, {
+      query: 'query DevelopmentThemes { themes(first: 20) { nodes { id name role } } }'
+    }, {
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Shopify-Access-Token': accessToken
+      }
     });
     payload = response.data;
-    console.log("Shopify store succesfully connected:", payload);
+    
   } catch (error) {
     if (!axios.isAxiosError(error)) throw error;
     if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
+
+      console.error('Shopify connection test timed out:', error);
       throw new AppError('Shopify connection test timed out.', 'UPSTREAM_TIMEOUT', 504);
     }
     if (error.response?.status === 401 || error.response?.status === 403) {
       throw new AppError('Shopify rejected the access token or the token lacks permission to read themes.', 'SHOPIFY_UNAUTHORIZED', 401);
     }
+
+    if ( error.response?.status === 404) {
+      console.log('Shopify store not found for domain', storeDomain, 'Error response:', error.response?.data);
+      throw new AppError('Shopify store not found. Check the store domain and try again.', 'SHOPIFY_NOT_FOUND', 404);
+    }
     if (error.response) {
+
+
       throw new AppError(`Shopify theme request failed with status ${error.response.status}.`, 'SHOPIFY_UPSTREAM_ERROR', 502);
     }
     throw new AppError('Could not reach the configured Shopify store.', 'SHOPIFY_UNAVAILABLE', 502);
   }
 
-  if (!payload || !Array.isArray(payload.themes)) {
+  if (payload?.errors?.length) {
+    throw new AppError('Shopify returned a GraphQL error while retrieving themes.', 'SHOPIFY_UPSTREAM_ERROR', 502);
+  }
+
+  const themes = payload?.data?.themes?.nodes;
+  if (!Array.isArray(themes)) {
     throw new AppError('Shopify returned an invalid themes response.', 'INVALID_UPSTREAM_RESPONSE', 502);
   }
 
-  const developmentThemes = payload.themes.flatMap(theme => {
-    const id = theme.id === undefined ? '' : String(theme.id);
-    if (!/^\d+$/.test(id) || typeof theme.name !== 'string' || theme.role !== 'development') return [];
+  const developmentThemes = themes.flatMap(theme => {
+    const match = typeof theme.id === 'string'
+      ? /^gid:\/\/shopify\/OnlineStoreTheme\/(\d+)$/.exec(theme.id)
+      : null;   
+    if (!match || typeof theme.name !== 'string' ) return [];
+    const id = match[1];
     return [{ id, name: theme.name, role: 'development' as const }];
   });
 
   if (developmentThemes.length === 0) {
+
+    console.log('No themes found for store', themes)
     throw new AppError('The token is valid, but Shopify returned no development themes for this store.', 'DEV_THEME_NOT_FOUND', 404);
   }
 
