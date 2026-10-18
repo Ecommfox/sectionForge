@@ -54,8 +54,7 @@ async function respondWithModels(request: Request, testConnection: boolean) {
       message: `Connected to Builder.io. ${models.length} model${models.length === 1 ? '' : 's'} found.`,
       modelCount: models.length
     };
-
-    console.log('Builder.io test connection response:', response);
+    
     return response;
   }
 
