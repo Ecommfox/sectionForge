@@ -29,6 +29,5 @@ export interface ConversionConfig {
 export interface AppSettings {
   builder: BuilderSpaceConfig;
   shopify: ShopifyDevThemeConfig;
-  anthropicApiKey?: string;
   conversion: ConversionConfig;
 }

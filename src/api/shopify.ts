@@ -12,6 +12,5 @@ export async function testConnection(
     ...(themeId ? { themeId } : {})
   });
 
-  console.log('Shopify response of test connection ',response);
-return response;
+  return response;
 }

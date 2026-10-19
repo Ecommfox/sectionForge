@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "start": "tsx server/start.ts"
+    "start": "tsx server/start.ts",
+    "test": "node --import tsx --test src/context/settingsStorage.test.ts"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",

@@ -21,8 +21,6 @@ shopifyRouter.post('/test-connection', async (request, response) => {
 
   const result = await verifyShopifyConnection({ storeDomain, accessToken, themeId });
 
-  console.log('Shopify connection verification result:', response, 'Shopify request payload', request);
-
   const selectedSuffix = result.selectedTheme
     ? ` Verified development theme "${result.selectedTheme.name}" (${result.selectedTheme.id}).`
     : ` Found ${result.developmentThemes.length} development themes; select one to validate its ID.`;

@@ -22,8 +22,6 @@ export async function testConnection(privateKey: string): Promise<BuilderTestCon
     );
   }
 
-  console.log('Builder.io models response:', response);
-
   const modelCount = response.models.length;
   return {
     success: true,
@@ -47,7 +45,6 @@ export async function listEntries(apiKey: string, modelName: string): Promise<Bu
     modelName
   });
 
-  console.log('All the entries:', response)
   return response.entries.map(entry => adaptBuilderEntry(entry, modelName));
 }
 

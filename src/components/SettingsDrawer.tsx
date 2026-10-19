@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Key, Shield, User, Store, Cpu, Check, AlertCircle, RefreshCw, LogOut } from 'lucide-react';
+import { X, Key, Shield, User, Store, Check, AlertCircle, RefreshCw, LogOut } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
 import { TEST_PROFILES } from '../context/AuthContext';
@@ -11,7 +11,7 @@ interface SettingsDrawerProps {
   onShowToast: (message: string) => void;
 }
 
-type TabType = 'profile' | 'builder' | 'shopify' | 'ai' | 'preferences';
+type TabType = 'profile' | 'builder' | 'shopify' | 'preferences';
 
 export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ isOpen, onClose, onShowToast }) => {
   const { currentUser, storageTarget, loginAs, loginCustom, setStorageTarget, clearSession } = useAuth();
@@ -20,7 +20,6 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ isOpen, onClose,
     updateBuilderConfig,
     updateShopifyConfig,
     updateConversionConfig,
-    setAnthropicApiKey,
     testBuilderConnection,
     testShopifyConnection,
     resetToDefaults
@@ -109,13 +108,6 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ isOpen, onClose,
           >
             <Key size={14} />
             <span>Builder.io</span>
-          </button>
-          <button
-            className={`drawer-tab-btn ${activeTab === 'ai' ? 'active' : ''}`}
-            onClick={() => setActiveTab('ai')}
-          >
-            <Cpu size={14} />
-            <span>Claude AI</span>
           </button>
           <button
             className={`drawer-tab-btn ${activeTab === 'shopify' ? 'active' : ''}`}
@@ -386,47 +378,7 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ isOpen, onClose,
             </div>
           )}
 
-          {/* TAB 3: Claude AI */}
-          {activeTab === 'ai' && (
-            <div className="drawer-section">
-              <div className="section-description">
-                Configure the AI conversion backend. By default, sectionForge uses deterministic pre-pass
-                extraction combined with Claude 3.7 Sonnet for developer-grade Liquid markup.
-              </div>
-
-              <div className="settings-field-group">
-                <div className="field-label-row">
-                  <label className="field-label">Anthropic API Key (BYOK)</label>
-                  <span className="field-badge">Browser Session Only</span>
-                </div>
-                <input
-                  type="password"
-                  className="field-text-input font-mono"
-                  value={settings.anthropicApiKey || ''}
-                  onChange={e => setAnthropicApiKey(e.target.value)}
-                  placeholder="sk-ant-api03-..."
-                />
-                <span className="field-help-text">
-                  Leave blank to use the local high-fidelity converter engine with standard schema generation.
-                </span>
-              </div>
-
-              <div className="ai-feature-card">
-                <div className="ai-feature-header">
-                  <Cpu size={16} />
-                  <span>Deterministic Pre-Pass + Claude Engine</span>
-                </div>
-                <p className="ai-feature-body">
-                  1. Sanitizes Builder AST (strips IDs, state, and runtime JS noise).<br />
-                  2. Maps sectionData directly to typed Shopify schema settings.<br />
-                  3. Rewrites window.data.hero.* bindings to section.settings.*.<br />
-                  4. Computes responsive CSS with media queries (max-width: 991px &amp; 640px).
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* TAB 4: Shopify Dev Theme */}
+          {/* TAB 3: Shopify Dev Theme */}
           {activeTab === 'shopify' && (
             <div className="drawer-section">
               <div className="section-description">
@@ -525,7 +477,7 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ isOpen, onClose,
             </div>
           )}
 
-          {/* TAB 5: Preferences */}
+          {/* TAB 4: Preferences */}
           {activeTab === 'preferences' && (
             <div className="drawer-section">
               <div className="settings-field-group">
