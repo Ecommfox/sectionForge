@@ -58,15 +58,7 @@ export async function listBuilderEntries(apiKey: string, modelName: string): Pro
   url.searchParams.set('apiKey', apiKey);
   url.searchParams.set('limit', '100');
 
-  const response = await fetchJson<{ results?: unknown[] }>(url.toString()).then(data => {
-    console.log('Builder.io entries response:', data, 'req path:', url.toString());
-    return data}).catch(error => {
-    if (error instanceof AppError) {
-      throw error;
-    }
-    console.error('Error fetching Builder.io entries:', error);
-  });
-
+  const response = await fetchJson<{ results?: unknown[] }>(url.toString());
 
   if (!response || !Array.isArray(response.results)) {
     throw new AppError('Builder.io returned an invalid entries response.', 'INVALID_UPSTREAM_RESPONSE', 502);

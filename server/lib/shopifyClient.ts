@@ -88,21 +88,19 @@ export async function verifyShopifyConnection(
   } catch (error) {
     if (!axios.isAxiosError(error)) throw error;
     if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
-
-      console.error('Shopify connection test timed out:', error);
       throw new AppError('Shopify connection test timed out.', 'UPSTREAM_TIMEOUT', 504);
     }
-    if (error.response?.status === 401 || error.response?.status === 403) {
-      throw new AppError('Shopify rejected the access token or the token lacks permission to read themes.', 'SHOPIFY_UNAUTHORIZED', 401);
+    if (error.response?.status === 401) {
+      throw new AppError('Shopify rejected the Admin API access token.', 'SHOPIFY_UNAUTHORIZED', 401);
+    }
+    if (error.response?.status === 403) {
+      throw new AppError('The Shopify access token lacks permission to read themes.', 'SHOPIFY_FORBIDDEN', 403);
     }
 
-    if ( error.response?.status === 404) {
-      console.log('Shopify store not found for domain', storeDomain, 'Error response:', error.response?.data);
+    if (error.response?.status === 404) {
       throw new AppError('Shopify store not found. Check the store domain and try again.', 'SHOPIFY_NOT_FOUND', 404);
     }
     if (error.response) {
-
-
       throw new AppError(`Shopify theme request failed with status ${error.response.status}.`, 'SHOPIFY_UPSTREAM_ERROR', 502);
     }
     throw new AppError('Could not reach the configured Shopify store.', 'SHOPIFY_UNAVAILABLE', 502);
@@ -127,8 +125,6 @@ export async function verifyShopifyConnection(
   });
 
   if (developmentThemes.length === 0) {
-
-    console.log('No themes found for store', themes)
     throw new AppError('The token is valid, but Shopify returned no development themes for this store.', 'DEV_THEME_NOT_FOUND', 404);
   }
 

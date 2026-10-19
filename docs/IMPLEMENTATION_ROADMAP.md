@@ -120,7 +120,7 @@ Estimated remaining effort: **~2–3 weeks** for one developer — materially le
 | **D3** | **Tracked `node_modules` + `dist`** | (a) `git rm -r --cached` to untrack, keep history · (b) rewrite history to purge | **(a).** Untracking is cheap and immediate; history purge is a separate, optional job | Phase 0 |
 | **D4** | **`package-lock.json` vs `pnpm-lock.yaml`** — `6afc25c` deleted `pnpm-lock.yaml` and grew `package-lock.json` | (a) npm/`package-lock.json` (state at head) · (b) pnpm | **(a)** — matches the `npm start`/`npm run dev` scripts at head. Add both lockfiles to `.gitignore` is **wrong**; track exactly one | Phase 0 |
 | **D5** | **Shopify write path** — `/preview` is `501` but the UI fabricates a URL | (a) implement dev-theme-only write · (b) delete the fake UI and keep `501` | **(a)**, guarded: refuse `role: main`. Until then, the UI must not claim success | Phase 3 |
-| **D6** | **Anthropic** — key field exists; no route, no test | (a) build `assist` for the converter registry · (b) delete the field | **(a)** if the registry lands (Phase 6); otherwise **(b)** | Phase 6/7 |
+| **D6** ✅ | **Anthropic** — no converter registry or assist route exists | (a) build `assist` for a future registry · (b) delete the unused field | **(b) Closed:** key and UI removed; reconsider only alongside a future converter registry | — |
 | **D7** | **Auth & roles** — test profiles in use | (a) leave deferred (as the roadmap doc says) · (b) build real auth | **(a) for now** — defer, but **never present test profiles as an authorization boundary** | Phase 8 (deferred) |
 
 **Hard blockers: D1 and D2.** They gate Phase 0, and Phase 0 gates everything.
@@ -149,7 +149,7 @@ Re-adjudicated against `6afc25c`. **Five findings have moved** since rev 1.
 | 1 | Engine not imported → Convert produces nothing | ❌ False | ❌ **False** (unchanged) | `src/App.tsx:11` imports the api client; engine called in `App.tsx`. Root cause was the entry point |
 | 2 | Builder entries are mockups; no fetch | ✅ True | 🟠 **Partially closed** | Real read path exists: `server/lib/builderClient.ts`, `server/routes/builder.ts`, `src/api/builder.ts`, `src/adapters/builderEntry.ts`. Not yet verified against a live space; fixtures still ship |
 | 3 | Shopify unused; no real preview | ✅ True | 🟠 **Partially closed** | `POST /api/shopify/test-connection` is real (`shopifyClient.verifyShopifyConnection`). **Preview write is `501`** while `PreviewPanel.tsx` still fabricates a URL on non-OK/throw |
-| 4 | Anthropic key never used | ✅ True | 🟠 **Half-fixed** | Key is **no longer persisted** to storage (`SettingsContext` strips it) — good. But **no `/api/anthropic/*` route exists**; the field remains inert UI |
+| 4 | Anthropic key never used | ✅ True | ✅ **Closed** | With no assist route or converter registry, the unused key and Claude UI were removed; legacy stored values are discarded on the next save |
 | 5 | User roles are mocked | ✅ True | ✅ **True** (unchanged, deferred) | `AuthContext` test profiles; `IMPLEMENTATION_ROADMAP.md` explicitly defers Phase 5 |
 | 6 | Connection tests are simulated | ✅ True | 🟠 **Mostly closed** | `SettingsContext` now calls the real endpoints. **Residual:** Builder test posts `{}` to `/models` with an `Authorization` header yet `builderRouter.post('/models')` never reads a body — verify the contract; Shopify success path is real |
 | 7 | Liquid simulator approximate | ⚠️ Approx | ⚠️ **Approx** (unchanged) | `src/simulator/liquidSimulator.ts` untouched |
@@ -247,7 +247,7 @@ sectionForge/
 │  │  ├─ health.ts                 ❌ NEW → GET /api/health
 │  │  ├─ builder.ts                ✅ models, test-connection, entries
 │  │  ├─ shopify.ts                ✅ test-connection · ⚠️ themes, preview (501)
-│  │  └─ anthropic.ts              ❌ NEW (only if D6a)
+│  │  └─ anthropic.ts              — not planned (D6 closed by deleting the unused setting)
 │  └─ lib/
 │     ├─ builderClient.ts          ✅
 │     ├─ shopifyClient.ts          ✅ (remove the log at :77)
@@ -256,9 +256,9 @@ sectionForge/
 │
 ├─ src/
 │  ├─ api/                         ✅ client.ts · builder.ts · shopify.ts · types.ts
-│  │                               (❌ anthropic.ts if D6a)
+│  │                               (no Anthropic API; D6 closed)
 │  ├─ adapters/builderEntry.ts     ✅
-│  ├─ converter/                   ⚠️ engine.ts emits hardcoded hero → registry (Phase 6)
+│  ├─ converter/                   ⚠️ engine.ts emits hardcoded hero → registry (Phase 5)
 │  ├─ simulator/                   ⚠️ liquidSimulator fidelity (Phase 7)
 │  ├─ components/ context/ types/ fixtures/
 │  └─ main.tsx
@@ -356,11 +356,11 @@ Every **Exit criterion** is a deterministic check (§13).
 
 | # | Task | Effort | Depends |
 |---|---|---|---|
-| 4.1 | ✅ **Already done** — `SettingsContext` strips secrets from storage and scrubs legacy values. Add a **test** locking the behaviour | S | 0.7 |
-| 4.2 | Remove hard-coded credential-shaped defaults from `DEFAULT_SETTINGS` | S | 0.5 |
-| 4.3 | Confirm the Anthropic key is never sent anywhere (no route exists — see D6) | S | — |
-| 4.4 | Finish real error surfaces in `SettingsDrawer` (401/403/timeout/unavailable) | S | 2.1, 3.1 |
-| 4.5 | Assert no secret reaches build output, browser storage, URLs, or server logs | M | 1.3 |
+| 4.1 | ✅ Add a test proving persistence strips Builder/Shopify credentials and legacy Anthropic values | S | — |
+| 4.2 | ✅ Keep all credential defaults empty | S | — |
+| 4.3 | ✅ Remove the unused Anthropic key and UI; no key is sent | S | — |
+| 4.4 | ✅ Surface distinct credential, permission, timeout, and unavailable errors in connection tests | S | — |
+| 4.5 | ✅ Remove credential-bearing request/error/payload logs; verify persisted settings contain no credential values | M | — |
 
 **Exit criterion:** no private credential in storage, bundle, URL, response, or log; invalid credentials produce specific, real errors.
 **Verify:** a test asserts the persisted settings blob contains none of `/privateKey|adminAccessToken|anthropicApiKey/` with a non-empty value. **Closes #4, #6.**
@@ -380,12 +380,12 @@ Every **Exit criterion** is a deterministic check (§13).
 
 ---
 
-### Phase 6 — Anthropic: **build or delete** *(finding #4, D6)*
+### Phase 6 — Anthropic: remove the inert setting *(finding #4, D6)*
 
 | # | Task | Effort | Depends |
 |---|---|---|---|
-| 6.1 | **Preferred:** `routes/anthropic.ts` + `src/api/anthropic.ts` — AI-assist mapping unmapped components to Liquid (pairs with 5.1) | M | 5.1, 1.3 |
-| 6.2 | Or remove the key field and its UI entirely | S | D6 |
+| 6.1 | Defer AI assist until a converter registry exists; no route is added without a supported mapping workflow | — | 5.1 |
+| 6.2 | ✅ Remove the unused Anthropic key, setting UI, and stale persisted value | S | — |
 
 **Exit criterion:** the setting either *does* something or no longer exists. **No inert controls.**
 
@@ -444,8 +444,8 @@ Errors use one envelope: `{ "error": { "code", "message" } }` (`server/lib/error
 | `GET` | `/api/shopify/themes` | `?storeDomain=&adminToken=` | ❌ `501` → implement |
 | `POST` | `/api/shopify/test-connection` | `{storeDomain, adminAccessToken, themeId?}` | ✅ → `{success, message, developmentThemes}` |
 | `POST` | `/api/shopify/preview` | `{themeId, name, liquid, css}` | ❌ `501` → implement (dev-theme only) |
-| `POST` | `/api/anthropic/test` | `{apiKey}` | ❌ only if D6a |
-| `POST` | `/api/anthropic/assist` | `{apiKey, prompt}` | ❌ only if D6a |
+| `POST` | `/api/anthropic/test` | — | Not planned; D6 closed |
+| `POST` | `/api/anthropic/assist` | — | Not planned; D6 closed |
 
 **Codes in use:** `400` invalid request/credential · `401` unauthorized upstream · `403` live-theme denied · `404` dev-theme not found · `405` method not allowed · `413` payload too large · `415` unsupported media type · `500` internal · `501` not implemented · `502/503/504` upstream failure/timeout.
 
@@ -464,14 +464,14 @@ graph TD
     P1 --> P2[Phase 2 — Verify Builder live]
     P1 --> P3[Phase 3 — Shopify preview, dev-theme only]
     P1 --> P4[Phase 4 — Finish secrets hygiene]
-    P5[Phase 5 — Converter registry] --> P6[Phase 6 — Anthropic assist]
-    P3 --> P6
+    P5[Phase 5 — Converter registry]
+    P6[Phase 6 — Remove unused Anthropic controls]
     P7[Phase 7 — Simulator fidelity]
     P8[Phase 8 — Auth & roles · DEFERRED]
     P9[Phase 9 — CI/tests] -.runs continuously.-> P1
 ```
 
-**Recommended order:** `0 → 1 → 2 → 4 → 3 → 5 → 6 → 7 → 9`, with `8` deferred.
+**Recommended order:** `0 → 1 → 2 → 4 → 6 → 3 → 5 → 7 → 9`, with `8` deferred. Phase 6's deletion path is independent of the future Phase 5 registry.
 
 Rationale: Phase 1 finishes the keystone that already exists. Phase 2 is the first *visible* win and needs no write access. Phase 4 is security-critical and cheap now that storage is already hardened. Phase 3 carries the highest blast radius, so it follows the guard work. Phase 8 is deferred by D7.
 
@@ -551,18 +551,18 @@ git diff c17b278 6afc25c --stat -- functions package.json
 
 ### Effort summary (remaining work)
 
-| Phase | Effort | Status at `6afc25c` | Closes |
+| Phase | Effort | Status | Closes |
 |---|---|---|---|
-| 0 — Land & clean | M | — | — |
-| 1 — Finish server layer 🔑 | M | ~60% built | unblocks 2/3/4 |
-| 2 — Builder verification | M | ~70% built | #2 |
-| 3 — Shopify preview | L | ~40% built | #3 |
-| 4 — Secrets hygiene 🔐 | S | ~70% built | #4, #6 |
-| 5 — Converter registry | L | not started | #8 |
-| 6 — Anthropic | M | not started | #4 |
-| 7 — Simulator fidelity | M | not started | #7 |
-| 8 — Auth & roles (deferred) | L | not started | #5 |
-| 9 — CI/tests | M | not started | #9 |
+| 0 — Land & clean | M | not started at `6afc25c` | — |
+| 1 — Finish server layer 🔑 | M | ~60% built at `6afc25c` | unblocks 2/3/4 |
+| 2 — Builder verification | M | ~70% built at `6afc25c` | #2 |
+| 3 — Shopify preview | L | ~40% built at `6afc25c` | #3 |
+| 4 — Secrets hygiene 🔐 | S | complete in this worktree | #4, #6 |
+| 5 — Converter registry | L | not started at `6afc25c` | #8 |
+| 6 — Anthropic | S | complete: unused feature removed | #4 |
+| 7 — Simulator fidelity | M | not started at `6afc25c` | #7 |
+| 8 — Auth & roles (deferred) | L | not started at `6afc25c` | #5 |
+| 9 — CI/tests | M | not started at `6afc25c` | #9 |
 
 **Sequential estimate:** **~2–3 weeks** for one developer (A4), excluding the deferred Phase 8. Rev 1 said 3–4 weeks from zero; the difference is the server layer that `c17b278` already built.
 
@@ -574,7 +574,7 @@ git diff c17b278 6afc25c --stat -- functions package.json
 2. **Phase 0.2–0.5** — untrack `node_modules`/`dist`, delete the empty `functions` file, merge the two roadmap docs, land `Local-dev` on `main`, retarget/close PR #3.
 3. **Phase 1.1 + 1.2 first** — `/api/health` and remove the credential log. Small, high-value, unblocks deploy verification and closes a live leak.
 4. **Phase 2** — verify Builder live: the first demoable win, and it needs no write access.
-5. **Phase 4.1** — lock the already-correct storage behaviour with a test before touching anything near it.
+5. **Phase 4 and Phase 6** — completed in this worktree: credential persistence/logging hardened and the inert Anthropic setting removed.
 
 ---
 
@@ -584,4 +584,4 @@ A task is done when: the code is committed with a conventional message; the phas
 
 ---
 
-*Rev 1: 2026-10-09 — audit-consolidation draft. **Rev 2: 2026-10-13** — corrected the `Local-dev` file count to 5,582 (measured); added decisions up front. **Rev 3: 2026-10-13** — re-baselined after two new `Local-dev` commits (`c17b278` server layer, `6afc25c` Cloudflare→Express pivot) invalidated rev 2's "no server layer" premise; corrected the branch-and-merge recommendation, added findings N1–N6, and made staleness a first-class rule (§0 rule 9, §13). **Rev 4: 2026-10-13** — **platform closed: axios + Express-on-Node only, no Cloudflare Pages** (D1 resolved by owner; CF options and `wrangler.toml` removed; empty `functions/` file is now deletion, not deferral); added the explicit **out-of-scope** list (§9 — **no CSS/stylesheet work**). No application code was changed in preparing this document.*
+*Rev 1: 2026-10-09 — audit-consolidation draft. **Rev 2: 2026-10-13** — corrected the `Local-dev` file count to 5,582 (measured); added decisions up front. **Rev 3: 2026-10-13** — re-baselined after two new `Local-dev` commits (`c17b278` server layer, `6afc25c` Cloudflare→Express pivot) invalidated rev 2's "no server layer" premise; corrected the branch-and-merge recommendation, added findings N1–N6, and made staleness a first-class rule (§0 rule 9, §13). **Rev 4: 2026-10-13** — **platform closed: axios + Express-on-Node only, no Cloudflare Pages** (D1 resolved by owner; CF options and `wrangler.toml` removed; empty `functions/` file is now deletion, not deferral); added the explicit **out-of-scope** list (§9 — **no CSS/stylesheet work**). **Rev 5: 2026-10-19** — completed Phase 4 secret-storage/logging/error hygiene and Phase 6 by removing the unused Anthropic control; this does not re-baseline repository-wide findings in §1.*

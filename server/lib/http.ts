@@ -43,6 +43,12 @@ export async function fetchJson<T>(url: string, options: FetchJsonOptions = {}):
       }
       if (error.response) {
         const status = error.response.status;
+        if (status === 401) {
+          throw new AppError('Builder.io rejected the API credential.', 'BUILDER_UNAUTHORIZED', 401);
+        }
+        if (status === 403) {
+          throw new AppError('The Builder.io API credential lacks permission for this resource.', 'BUILDER_FORBIDDEN', 403);
+        }
         throw new AppError(
           `Builder.io request failed with status ${status}.`,
           'BUILDER_UPSTREAM_ERROR',

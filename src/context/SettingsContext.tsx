@@ -3,8 +3,7 @@ import { AppSettings, BuilderSpaceConfig, ShopifyDevThemeConfig, ConversionConfi
 import { testConnection } from '../api/builder';
 import { testConnection as testShopifyApiConnection } from '../api/shopify';
 import type { ShopifyDevelopmentTheme } from '../api/types';
-
-const SETTINGS_STORAGE_KEY = 'sectionforge_user_settings';
+import { persistSettings, sanitizeSettingsForStorage, SETTINGS_STORAGE_KEY } from './settingsStorage';
 
 const DEFAULT_SETTINGS: AppSettings = {
   builder: {
@@ -20,7 +19,6 @@ const DEFAULT_SETTINGS: AppSettings = {
     themeId: '',
     enabled: false
   },
-  anthropicApiKey: '',
   conversion: {
     cssPrefix: 'sf-',
     embedStyles: true,
@@ -38,7 +36,6 @@ interface SettingsContextType {
   updateBuilderConfig: (config: Partial<BuilderSpaceConfig>) => void;
   updateShopifyConfig: (config: Partial<ShopifyDevThemeConfig>) => void;
   updateConversionConfig: (config: Partial<ConversionConfig>) => void;
-  setAnthropicApiKey: (key: string) => void;
   resetToDefaults: () => void;
   testBuilderConnection: () => Promise<{ success: boolean; message: string }>;
   testShopifyConnection: () => Promise<{
@@ -65,7 +62,7 @@ function getStoredSettings(): AppSettings {
     if (!stored || typeof stored !== 'object' || Array.isArray(stored)) return DEFAULT_SETTINGS;
 
     const values = stored as Partial<AppSettings>;
-    const settings: AppSettings = {
+    const settings = sanitizeSettingsForStorage({
       ...DEFAULT_SETTINGS,
       ...values,
       builder: {
@@ -77,14 +74,11 @@ function getStoredSettings(): AppSettings {
         ...DEFAULT_SETTINGS.shopify,
         ...(values.shopify || {}),
         adminAccessToken: ''
-      },
-      anthropicApiKey: ''
-    };
+      }
+    });
 
-    const sanitized = JSON.stringify(settings);
     try {
-      localStorage.setItem(SETTINGS_STORAGE_KEY, sanitized);
-      sessionStorage.removeItem(SETTINGS_STORAGE_KEY);
+      persistSettings(settings, localStorage, sessionStorage);
     } catch (error) {
       console.warn('Could not remove legacy credentials from browser storage.', error);
     }
@@ -105,14 +99,7 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
 
   useEffect(() => {
     try {
-      const safeSettings: AppSettings = {
-        ...settings,
-        builder: { ...settings.builder, privateKey: '' },
-        shopify: { ...settings.shopify, adminAccessToken: '' },
-        anthropicApiKey: ''
-      };
-      localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(safeSettings));
-      sessionStorage.removeItem(SETTINGS_STORAGE_KEY);
+      persistSettings(settings, localStorage, sessionStorage);
     } catch (error) {
       console.warn('Settings persistence failed.', error);
     }
@@ -160,13 +147,6 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
     }));
   };
 
-  const setAnthropicApiKey = (key: string) => {
-    setSettings(prev => ({
-      ...prev,
-      anthropicApiKey: key
-    }));
-  };
-
   const resetToDefaults = () => {
     setSettings(DEFAULT_SETTINGS);
   };
@@ -183,7 +163,6 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
         lastTested: result.message
       });
 
-      console.log('Builder.io test connection result:', result);
       return { success: true, message: result.message };
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Builder.io connection failed.';
@@ -234,7 +213,6 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
         updateBuilderConfig,
         updateShopifyConfig,
         updateConversionConfig,
-        setAnthropicApiKey,
         resetToDefaults,
         testBuilderConnection,
         testShopifyConnection
